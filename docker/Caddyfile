@@ -1,0 +1,52 @@
+# Serves the built site from /srv on :8080 (unprivileged port: the container
+# runs as non-root with all capabilities dropped). TLS and the public hostname
+# are handled in front of it (host Caddy + cloudflared, see CICD.md).
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+:8080 {
+	root * /srv
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		-Server
+	}
+
+	# Page policy. wasm-unsafe-eval: HarfBuzz runs as WebAssembly.
+	# 'unsafe-inline' styles: Svelte sets style attributes.
+	@page not path /assets/woff2.worker-*.js
+	header @page Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
+
+	# The WOFF2 worker gets its own policy (workers use their script's CSP):
+	# the Emscripten/embind encoder needs eval and loads its wasm from a data:
+	# URL. It has no DOM, network or storage access beyond that.
+	@woff2 path /assets/woff2.worker-*.js
+	header @woff2 Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src data:"
+
+	# Hashed build output never changes under the same name.
+	@immutable path /assets/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# Entry points must be revalidated so updates (and the service worker) land at once.
+	@entry path / /index.html /sw.js /registerSW.js /manifest.webmanifest /theme.js /workbox-*.js
+	header @entry Cache-Control "no-cache"
+
+	@static path /icons/* /AshFont.ttf /duct.png
+	header @static Cache-Control "public, max-age=86400"
+
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

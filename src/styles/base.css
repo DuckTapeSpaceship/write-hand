@@ -119,3 +119,13 @@ textarea {
     --cell-min: 280px; /* 2 columns on an 11" iPad; 240 would still fit 3 */
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

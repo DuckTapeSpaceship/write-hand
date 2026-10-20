@@ -1,6 +1,9 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import CellMenu from './components/CellMenu.svelte'
+  import ExportDialog from './components/ExportDialog.svelte'
+  import Landing from './components/Landing.svelte'
+  import Onboarding from './components/Onboarding.svelte'
   import SettingsMenu from './components/SettingsMenu.svelte'
   import TestStrip from './components/TestStrip.svelte'
   import GlyphGrid from './components/GlyphGrid.svelte'
@@ -14,11 +17,11 @@
   import { REQUIRED_IDS, SLOT_BY_ID, TIERS, tierSlots, type TierId } from './lib/model/charset'
   import { live } from './lib/preview/live.svelte'
   import { pickAuto } from './lib/preview/sentences'
-  import { downloadBlob, slugify } from './lib/store/file'
   import { hasGlyph, project } from './lib/store/project.svelte'
   import { cellDomId, clearWithUndo } from './lib/ui/actions'
+  import { backup } from './lib/ui/backup.svelte'
   import { prefs } from './lib/ui/prefs.svelte'
-  import { toasts } from './lib/ui/toast.svelte'
+  import { startPwa } from './lib/ui/pwa.svelte'
 
   const version = __APP_VERSION__
   const AUTO_KEY = 'wh-sample-auto'
@@ -29,16 +32,26 @@
   let features = $state({ calt: true, liga: true, ss01: false })
   let auto = $state(readAuto())
   let text = $state(project.sample)
-  let exporting = $state(false)
+  let exportOpen = $state(false)
   let expanded = $state(false) // phone: preview panel open
+  let onboarding = $state(!onboarded() && !Object.keys(project.slots).length)
 
   const has = hasGlyph
+  const empty = $derived(!Object.keys(project.slots).length)
   const phone = $derived(inputMode.phone)
   const requiredDone = $derived(REQUIRED_IDS.filter(id => project.has(id)).length)
   const requiredLeft = $derived(REQUIRED_IDS.length - requiredDone)
   const tier = $derived(TIERS.find(t => t.id === activeTier)!)
   const order = $derived(tierSlots(activeTier).map(s => s.id))
   const featureCss = $derived(`"calt" ${features.calt ? 1 : 0}, "liga" ${features.liga ? 1 : 0}, "ss01" ${features.ss01 ? 1 : 0}`)
+
+  function onboarded(): boolean {
+    try {
+      return localStorage.getItem('wh-onboarded') === '1'
+    } catch {
+      return true
+    }
+  }
 
   function readAuto(): boolean {
     try {
@@ -68,6 +81,7 @@
   $effect(() => live.start())
   $effect(() => project.autosave())
   $effect(() => prefs.apply())
+  $effect(() => startPwa())
 
   // Phone: the expanded preview folds away once you scroll on.
   $effect(() => {
@@ -113,25 +127,23 @@
     el?.focus({ preventScroll: true })
   }
 
-  async function exportOtf() {
-    exporting = true
-    try {
-      const buf = await live.buildFont()
-      downloadBlob(`${slugify(project.name)}.otf`, buf, 'font/otf')
-    } catch (err) {
-      toasts.show(`Export failed: ${err instanceof Error ? err.message : err}`)
-    } finally {
-      exporting = false
-    }
+  async function start() {
+    activeTier = 'required'
+    if (inputMode.phone && inputMode.touch === 'tap') return openWrite('a')
+    await tick()
+    const el = document.getElementById(cellDomId('a'))
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.focus({ preventScroll: true })
   }
 </script>
 
+<a class="skip" href="#characters">Skip to the characters</a>
 <header class="top" class:phone>
   <div class="row brand-row">
-    <div class="brand">
-      <img src="/duct.png" alt="" width="28" height="28" />
+    <h1 class="brand">
+      <img src="/icons/icon-192.png" alt="" width="30" height="30" />
       <span>Write-Hand</span>
-    </div>
+    </h1>
     {#if !phone}
       <input class="name" bind:value={project.name} aria-label="Font name" placeholder="Your font name" maxlength="64" />
     {/if}
@@ -141,14 +153,13 @@
       </div>
       <span class="count">{requiredDone}/{REQUIRED_IDS.length}</span>
     </div>
-    <button class="btn primary" onclick={exportOtf} disabled={requiredLeft > 0 || exporting} data-testid="download" title={requiredLeft ? `${requiredLeft} required characters left` : 'Download your font'}>
-      {exporting ? 'Building…' : phone && requiredLeft ? `${requiredLeft} left` : phone ? '.otf' : 'Download .otf'}
-    </button>
+    <button class="btn" class:primary={!requiredLeft} onclick={() => (exportOpen = true)} data-testid="export">Export</button>
     <SettingsMenu />
+    <button class="btn" onclick={() => (onboarding = true)} aria-label="How it works" title="How it works">?</button>
     <ThemeToggle />
   </div>
   {#if !phone && requiredLeft > 0}
-    <p class="left"><span class="pill">{requiredLeft} required left</span> before you can download</p>
+    <p class="left"><span class="pill">{requiredLeft} required left</span> before you can download a font</p>
   {/if}
   {#if phone && expanded}
     <input class="name" bind:value={project.name} aria-label="Font name" placeholder="Your font name" maxlength="64" />
@@ -157,7 +168,17 @@
   <TierChips bind:active={activeTier} />
 </header>
 
-<main class="content">
+<main class="content" id="characters" tabindex="-1">
+  {#if empty}
+    <Landing onstart={start} />
+  {/if}
+  {#if backup.due}
+    <div class="backup panel" role="status">
+      <span>Your drawing lives only in this browser. Save a backup file?</span>
+      <button class="btn primary" onclick={() => (exportOpen = true)}>Back up…</button>
+      <button class="btn" onclick={() => backup.snooze()}>Later</button>
+    </div>
+  {/if}
   <TestStrip {features} />
   <GlyphGrid {tier} onmenu={openMenu} onopen={openWrite} />
 </main>
@@ -181,8 +202,19 @@
     onundo={() => project.undoStroke(m.id)}
     onclear={() => clearWithUndo(m.id)}
     onopen={() => openWrite(m.id)}
-    onclose={() => (menu = null)}
+    onclose={() => {
+      menu = null
+      document.getElementById(cellDomId(m.id))?.focus({ preventScroll: true })
+    }}
   />
+{/if}
+
+{#if exportOpen}
+  <ExportDialog onclose={() => (exportOpen = false)} />
+{/if}
+
+{#if onboarding}
+  <Onboarding onclose={() => (onboarding = false)} />
 {/if}
 
 {#if writing}
@@ -213,7 +245,37 @@
     align-items: center;
     gap: 10px;
   }
+  .skip {
+    position: absolute;
+    left: 8px;
+    top: -100px;
+    z-index: 100;
+    padding: 8px 12px;
+    background: var(--accent);
+    color: var(--on-accent);
+    border: var(--border);
+    border-radius: var(--radius);
+  }
+  .skip:focus {
+    top: 8px;
+  }
+  .content:focus {
+    outline: none;
+  }
+  .backup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0 4px;
+    padding: 10px 14px;
+    background: var(--bg);
+  }
+  .backup span {
+    flex: 1 1 240px;
+  }
   .brand {
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -278,7 +340,6 @@
   }
   .ver {
     font-family: var(--font-mono);
-    opacity: 0.6;
     margin-left: 6px;
   }
   .phone .brand span {

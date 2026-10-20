@@ -35,7 +35,16 @@ for (const f of fonts) {
   })
   let out = (r.stdout + r.stderr).trim()
   let ok = r.status === 0
-  if (ok) {
+  if (ok && f.endsWith('.woff2')) {
+    // WOFF2 has its own table directory; OTS writes plain OTF, so check that
+    // the outline and layout tables made it through.
+    const after = tableTags(dst)
+    const missing = ['CFF ', 'GSUB', 'GPOS', 'cmap'].filter(t => !after.includes(t))
+    if (missing.length) {
+      ok = false
+      out += `\nmissing after OTS: ${missing.join(', ')}`
+    }
+  } else if (ok) {
     const before = tableTags(src)
     const after = new Set(tableTags(dst))
     const dropped = before.filter(t => !after.has(t))
@@ -45,7 +54,8 @@ for (const f of fonts) {
     }
   }
   if (!ok) failed++
-  console.log(`${ok ? 'OK  ' : 'FAIL'} ${f}  [${tableTags(src).join(' ')}]${ok ? '' : '\n' + out.replace(/^/gm, '     ')}`)
+  const tags = f.endsWith('.woff2') ? (ok ? tableTags(dst) : []) : tableTags(src)
+  console.log(`${ok ? 'OK  ' : 'FAIL'} ${f}  [${tags.join(' ')}]${ok ? '' : '\n' + out.replace(/^/gm, '     ')}`)
 }
 console.log(`\nOTS: ${fonts.length - failed}/${fonts.length} fonts sanitized`)
 process.exit(failed ? 1 : 0)

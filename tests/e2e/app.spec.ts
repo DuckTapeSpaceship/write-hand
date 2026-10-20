@@ -74,21 +74,45 @@ test('visible × clears, keyboard undo and Delete work on a focused cell', async
   await expect(cell(page, 'd')).not.toHaveClass(/filled/)
 })
 
-test('download is gated on the Required tier, then yields a parseable OTF', async ({ page }) => {
-  test.skip(kind() !== 'desktop', 'one download run is enough')
+test('export: gated on Required, then OTF + WOFF2; project file round-trips', async ({ page }) => {
+  test.skip(kind() === 'phone', 'desktop (Chromium) + iPad (WebKit) cover export')
+  await page.getByTestId('export').click()
   const dl = page.getByTestId('download')
   await expect(dl).toBeDisabled()
-  await expect(page.getByText('67 required left')).toBeVisible()
+  await expect(page.getByRole('dialog').getByText('67 required left')).toBeVisible()
+  await page.getByRole('button', { name: 'Close export' }).click()
+
   const ids = await page.locator('[data-slot]').evaluateAll(els => els.map(e => (e as HTMLElement).dataset.slot!))
   for (const id of ids) await stroke(cellCanvas(page, id))
+  // 67 strokes: the backup reminder shows up.
+  await expect(page.getByText('Your drawing lives only in this browser')).toBeVisible()
+
+  await page.getByTestId('export').click()
+  await page.getByRole('dialog').getByLabel('Font name').fill('Test Hand')
   await expect(dl).toBeEnabled()
-  await page.getByLabel('Font name').fill('Test Hand')
-  const [download] = await Promise.all([page.waitForEvent('download'), dl.click()])
-  expect(download.suggestedFilename()).toBe('Test-Hand.otf')
-  const buf = readFileSync((await download.path())!)
+  const [otf] = await Promise.all([page.waitForEvent('download'), dl.click()])
+  expect(otf.suggestedFilename()).toBe('Test-Hand.otf')
+  const buf = readFileSync((await otf.path())!)
   const font = parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength))
   expect(font.names.fontFamily.en).toBe('Test Hand')
-  for (const ch of 'aZ9?!.,\'') expect(font.charToGlyph(ch).index, ch).toBeGreaterThan(1)
+  for (const ch of "aZ9?!.,'") expect(font.charToGlyph(ch).index, ch).toBeGreaterThan(1)
+
+  const [woff2] = await Promise.all([page.waitForEvent('download'), page.getByTestId('download-woff2').click()])
+  expect(woff2.suggestedFilename()).toBe('Test-Hand.woff2')
+  expect(readFileSync((await woff2.path())!).subarray(0, 4).toString('latin1')).toBe('wOF2')
+
+  const [proj] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-project').click()])
+  expect(proj.suggestedFilename()).toBe('Test-Hand.writehand.json')
+  const projPath = (await proj.path())!
+  await expect(page.getByText('Your drawing lives only in this browser')).toBeHidden() // exported: reminder resets
+
+  // Wipe everything, then import the file.
+  await page.getByRole('button', { name: 'Close export' }).click()
+  await freshApp(page)
+  await page.getByTestId('export').click()
+  await page.getByTestId('import-project').setInputFiles(projPath)
+  await expect(page.getByText(/Imported “Test Hand” · 67 characters/)).toBeVisible()
+  await expect(page.locator('.cell.filled')).toHaveCount(67)
 })
 
 test('cells meet the minimum size for the breakpoint', async ({ page }) => {

@@ -5,7 +5,7 @@
 set -eu
 PW_VERSION=$(node -p "require('@playwright/test/package.json').version")
 exec docker run --rm --init --ipc=host --network host \
-  --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI=1 \
+  --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI=1 -e PW_BASE_URL \
   -v "$PWD":/work -w /work \
   "mcr.microsoft.com/playwright:v${PW_VERSION}-noble" \
   npx playwright test "$@"

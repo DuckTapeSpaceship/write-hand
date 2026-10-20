@@ -15,7 +15,7 @@
 
 <section class="tier" aria-label={tier.label}>
   {#each tier.groups as group (group.label)}
-    <h3>{group.label}</h3>
+    <h2>{group.label}</h2>
     <div class="grid">
       {#each group.slots as def (def.id)}
         <DrawCell {def} {onmenu} {onopen} />
@@ -28,7 +28,7 @@
   .tier {
     container-type: inline-size;
   }
-  h3 {
+  h2 {
     margin: 22px 0 10px;
     font-size: 1rem;
   }

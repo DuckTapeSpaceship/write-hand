@@ -80,16 +80,19 @@ export async function press(canvas: Locator, holdMs: number, pointerType: 'pen' 
 export const cell = (page: Page, id: string) => page.locator(`[data-slot="${id}"]`)
 export const cellCanvas = (page: Page, id: string) => cell(page, id).locator('canvas')
 
-export async function freshApp(page: Page) {
-  await page.goto('/')
-  await page.evaluate(async () => {
+export async function freshApp(page: Page, opts: { onboarded?: boolean } = {}) {
+  // Clear storage from a same-origin page that isn't running the app, so its
+  // pagehide flush can't write the old project back.
+  await page.goto('/theme.js')
+  await page.evaluate(async onboarded => {
     localStorage.clear()
+    if (onboarded) localStorage.setItem('wh-onboarded', '1')
     await new Promise<void>(res => {
       const r = indexedDB.deleteDatabase('write-hand')
       r.onsuccess = r.onerror = r.onblocked = () => res()
     })
-  })
-  await page.reload()
+  }, opts.onboarded ?? true)
+  await page.goto('/')
   await expect(cell(page, 'a')).toBeVisible()
 }
 

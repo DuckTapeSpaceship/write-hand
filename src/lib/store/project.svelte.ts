@@ -135,10 +135,15 @@ class ProjectStore {
   /** Debounced autosave; call once from a component. */
   autosave(delay = 400): () => void {
     let timer: ReturnType<typeof setTimeout> | null = null
+    let first = true
     return $effect.root(() => {
       $effect(() => {
         void [this.name, this.metrics, this.pen, this.slots, this.sample]
         if (!this.loaded) return
+        if (first) {
+          first = false // what was just loaded is already saved
+          return
+        }
         if (timer) clearTimeout(timer)
         timer = setTimeout(() => {
           timer = null

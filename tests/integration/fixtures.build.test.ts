@@ -10,6 +10,7 @@ import { DEFAULT_METRICS } from '../../src/lib/model/metrics'
 import { PEN_PRESETS, type PenStyle } from '../../src/lib/model/project'
 import { loadStrokeFixture, shape } from '../helpers'
 import { MARK_STROKES } from '../fixtures/synthetic'
+import { compress, decompress } from 'woff2-encoder'
 
 const OUT = new URL('../.out/fonts/', import.meta.url)
 beforeAll(() => mkdirSync(OUT, { recursive: true }))
@@ -71,5 +72,15 @@ describe('accents + kerning', () => {
     for (const ch of 'áàâãäåéèêëíìîïóòôõöñýÿ') expect(parsed.charToGlyph(ch).index, ch).toBeGreaterThan(1)
     expect(shape(font.buffer, 'défi')).toEqual(['d', 'uni00E9', 'f', 'i'])
     expect(font.kernPairs).toBeGreaterThan(0)
+  })
+
+  it('compresses to WOFF2 and round-trips', async () => {
+    const font = build(handwriting, 'fineliner', 'Hand Woff2')
+    const woff2 = await compress(font.buffer)
+    writeFileSync(new URL('handwriting.woff2', OUT), woff2)
+    expect(String.fromCharCode(...woff2.slice(0, 4))).toBe('wOF2')
+    expect(woff2.byteLength).toBeLessThan(font.buffer.byteLength)
+    const back = await decompress(woff2)
+    expect(parse(back.buffer.slice(back.byteOffset, back.byteOffset + back.byteLength)).numGlyphs).toBe(parse(font.buffer).numGlyphs)
   })
 })

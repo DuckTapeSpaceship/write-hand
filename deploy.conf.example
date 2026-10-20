@@ -1,0 +1,14 @@
+# Write-Hand deploy config: copy to deploy.conf (gitignored) and edit.
+# Sourced by manage.fish. Registry-agnostic: change REGISTRY/IMAGE_OWNER to move
+# registries without touching the script.
+
+# --- registry / image ---
+set -gx REGISTRY    "git.ducktapespaceship.xyz"  # Forgejo registry
+set -gx IMAGE_OWNER "arun"               # lowercase owner/namespace (blank if the registry has none)
+set -gx IMAGE_NAME  "write-hand"
+set -gx IMAGE_TAG   "latest"             # tag the box runs
+
+# --- deploy target (the box running Caddy + cloudflared) ---
+set -gx DEPLOY_HOST "user@web-box"        # SSH target running docker compose
+set -gx DEPLOY_DIR  "~/Applications/write-hand"  # dir on the host holding docker-compose.yml
+set -gx PORT        "8340"               # host port the host Caddy proxies to

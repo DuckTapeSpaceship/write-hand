@@ -1,0 +1,18 @@
+# Keep the build context small + reproducible.
+.git
+node_modules
+dist
+dev-dist
+coverage
+test-results
+playwright-report
+blob-report
+tests/.out
+docs
+lab
+*.md
+deploy.conf
+.env
+.env.*
+.vscode
+.idea

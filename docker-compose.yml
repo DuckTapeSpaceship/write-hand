@@ -1,0 +1,31 @@
+# Write-Hand: deployment compose for the web box.
+#
+# Pulls the prebuilt image from the registry. Builds/pushes/deploys are driven
+# by ./manage.fish; there is no CI and no runner. The container only serves
+# static files, so it runs read-only, non-root, with every capability dropped,
+# and needs no volumes: users' drawings live in their own browsers.
+#
+# The host's Caddy reverse-proxies to 127.0.0.1:${PORT}; cloudflared points the
+# public hostname at that Caddy (see CICD.md).
+services:
+  write-hand:
+    image: ${IMAGE_REF:-git.ducktapespaceship.xyz/arun/write-hand}:${IMAGE_TAG:-latest}
+    # To build locally instead of pulling, comment `image:` above and uncomment:
+    # build: .
+    container_name: write-hand
+    restart: unless-stopped
+    ports:
+      - "${BIND:-127.0.0.1}:${PORT:-8340}:8080"
+    read_only: true
+    user: "65532:65532"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
