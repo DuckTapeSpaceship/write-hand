@@ -1,0 +1,16 @@
+{
+  "extends": "@tsconfig/svelte/tsconfig.json",
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2023", "dom", "dom.iterable", "webworker.importscripts"],
+    "types": ["vite/client", "node"],
+    "noEmit": true,
+    "allowJs": false,
+    "checkJs": false,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "noUnusedLocals": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.svelte", "lab/**/*.ts", "lab/**/*.svelte", "tests/**/*.ts", "vite.config.ts", "playwright.config.ts"]
+}

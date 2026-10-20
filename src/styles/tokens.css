@@ -1,0 +1,50 @@
+/* Write-Hand theme tokens: tactile / retro. One flat background, hard outlines
+   and shadows, 5px radius. Dark is the default; `data-theme` overrides. */
+:root {
+  color-scheme: dark;
+  --bg: #1e1f29;
+  --fg: #c0caf5;
+  --accent: #f1fa8c; /* Dracula yellow: highlighter */
+  --on-accent: #1e1f29;
+
+  /* Dracula supporting colours: fills/shadows only, text on them is --on-accent */
+  --green: #50fa7b;
+  --orange: #ffb86c;
+  --red: #ff5555;
+  --cyan: #8be9fd;
+  --pink: #ff79c6;
+  --comment: #6272a4;
+
+  --border-w: 2px;
+  --border: var(--border-w) solid var(--fg);
+  --radius: 5px;
+  --shadow: 4px 4px 0 0 var(--fg);
+  --shadow-hover: 5px 5px 0 0 var(--fg);
+  --shadow-accent: 4px 4px 0 0 var(--accent);
+
+  --font-ui: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --cell-min: 160px;
+  --gutter: 16px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --bg: #c0caf5;
+    --fg: #1e1f29;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #c0caf5;
+  --fg: #1e1f29;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1e1f29;
+  --fg: #c0caf5;
+}
