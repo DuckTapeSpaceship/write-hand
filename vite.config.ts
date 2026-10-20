@@ -20,6 +20,9 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(appVersion()),
   },
   worker: { format: 'es' },
+  // harfbuzzjs finds its wasm via new URL('harfbuzz.wasm', import.meta.url),
+  // which dev pre-bundling would break.
+  optimizeDeps: { exclude: ['harfbuzzjs'] },
   build: {
     target: 'es2022',
     // Only index.html is an entry: lab/ is dev-only and never ships.

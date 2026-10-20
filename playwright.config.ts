@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const PORT = 4174
-const app = /(app|quality)\.spec\.ts/
+const app = /(app|quality|realism)\.spec\.ts/
 
 export default defineConfig({
   testDir: 'tests/e2e',

@@ -15,6 +15,12 @@ describe('charset tiers', () => {
     expect(rec.some(id => REQUIRED_IDS.includes(id))).toBe(false)
     expect(new Set(ALL_SLOTS.map(s => s.id)).size).toBe(ALL_SLOTS.length)
   })
+  it('alternates and ligatures tiers', () => {
+    expect(tierSlots('alternates').map(s => s.id).slice(0, 3)).toEqual(['e.alt1', 'e.alt2', 'a.alt1'])
+    expect(tierSlots('alternates').length).toBe(20)
+    expect(tierSlots('ligatures').map(s => s.label)).toContain('ff')
+  })
+
   it('every slot has a unique glyph name', () => {
     const names = ALL_SLOTS.map(s => slotGlyphName(s.id))
     expect(new Set(names).size).toBe(names.length)

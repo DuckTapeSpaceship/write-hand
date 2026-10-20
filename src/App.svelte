@@ -2,6 +2,7 @@
   import { tick } from 'svelte'
   import CellMenu from './components/CellMenu.svelte'
   import SettingsMenu from './components/SettingsMenu.svelte'
+  import TestStrip from './components/TestStrip.svelte'
   import GlyphGrid from './components/GlyphGrid.svelte'
   import Preview from './components/Preview.svelte'
   import ThemeToggle from './components/ThemeToggle.svelte'
@@ -157,6 +158,7 @@
 </header>
 
 <main class="content">
+  <TestStrip {features} />
   <GlyphGrid {tier} onmenu={openMenu} onopen={openWrite} />
 </main>
 

@@ -31,6 +31,12 @@ const base = (tier: TierId) => (ch: string): SlotDef => ({ id: ch, kind: 'base',
 
 const REQUIRED_PUNCT = ".,'?!"
 // The rest of printable ASCII punctuation.
+/** Letters that get drawn alternates; calt cycles through them. */
+export const ALT_LETTERS = [...'eaotnsirld']
+export const ALTS_PER_LETTER = 2
+/** Drawn ligatures (components joined by '_'). */
+export const LIGATURES = ['f_f', 'f_i', 'f_l', 'l_l', 't_t', 't_h', 'o_o', 'e_e']
+
 const RECOMMENDED_PUNCT = [...'!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'].filter(c => !REQUIRED_PUNCT.includes(c)).join('')
 
 export const TIERS: Tier[] = [
@@ -48,6 +54,34 @@ export const TIERS: Tier[] = [
     id: 'recommended',
     label: 'Recommended',
     groups: [{ label: 'Punctuation & symbols', slots: [...RECOMMENDED_PUNCT].map(base('recommended')) }],
+  },
+  {
+    id: 'alternates',
+    label: 'Alternates',
+    groups: [
+      {
+        label: 'Second and third forms · repeated letters cycle through them (calt)',
+        slots: ALT_LETTERS.flatMap(ch =>
+          Array.from({ length: ALTS_PER_LETTER }, (_, i) => ({
+            id: `${ch}.alt${i + 1}`,
+            kind: 'alt' as const,
+            label: ch,
+            hint: `form ${i + 2}`,
+            tier: 'alternates' as const,
+          })),
+        ),
+      },
+    ],
+  },
+  {
+    id: 'ligatures',
+    label: 'Ligatures',
+    groups: [
+      {
+        label: 'Joined pairs · used wherever the pair appears (liga)',
+        slots: LIGATURES.map(id => ({ id, kind: 'liga' as const, label: id.replace(/_/g, ''), hint: 'joined', tier: 'ligatures' as const })),
+      },
+    ],
   },
   {
     id: 'accents',

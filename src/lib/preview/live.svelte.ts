@@ -14,6 +14,8 @@ class LivePreview {
   building = $state(false)
   error = $state<string | null>(null)
   lastMs = $state(0)
+  /** The latest preview font's bytes (a copy: FontFace may hold the original). */
+  buffer = $state.raw<ArrayBuffer | null>(null)
   private client: BuildClient | null = null
   private face = new FaceSwapper(PREVIEW_FAMILY)
 
@@ -41,6 +43,7 @@ class LivePreview {
             if (!res) return
             this.lastMs = res.totalMs
             this.error = null
+            this.buffer = res.buffer ? res.buffer.slice(0) : null
             if (await this.face.swap(res.buffer)) {
               this.ready = !!res.buffer
               this.gen++

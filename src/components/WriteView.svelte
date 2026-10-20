@@ -33,7 +33,8 @@
   const segments = $derived(segment(text, hasGlyph))
   const ghosts = $derived.by(() => {
     const out: { strokes: typeof strokes; side: 'left' | 'right' }[] = []
-    const prev = order[idx - 1]
+    // An alternate is drawn next to its base letter; otherwise the previous slot.
+    const prev = def?.kind === 'alt' ? id.replace(/\.alt\d+$/, '') : order[idx - 1]
     const next = order[idx + 1]
     if (prev && project.has(prev)) out.push({ strokes: project.strokes(prev), side: 'left' })
     if (next && project.has(next)) out.push({ strokes: project.strokes(next), side: 'right' })
