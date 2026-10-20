@@ -4,7 +4,7 @@
 import { DEFAULT_FIT, fitClosedPolygon, type FitOptions } from '../geom/fit'
 import { unionPolygons } from '../geom/union'
 import { fixWinding } from '../geom/winding'
-import { freehandPolygon } from './trace'
+import { freehandPolygon } from './freehand'
 import type { Contour, OutlineEngine } from './types'
 
 export function vectorOutline(polys: number[][][], fit: FitOptions = DEFAULT_FIT): Contour[] {

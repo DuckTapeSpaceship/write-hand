@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte'
   import sample from '../tests/fixtures/strokes/sample.json'
-  import { ENGINES, ENGINE_IDS, type EngineId } from '../src/lib/engines'
+  import handwriting from '../tests/fixtures/strokes/handwriting-mouse.json'
   import { contourStats } from '../src/lib/engines/types'
   import { applySyntheticPressure, SYNTHETIC_CURVES, type SyntheticCurve } from '../src/lib/engines/pressure'
   import { DEFAULT_METRICS } from '../src/lib/model/metrics'
@@ -14,7 +14,7 @@
   type LabSlot = { strokes: Stroke[]; rev: number }
   type StrokeFile = { format: 'write-hand-strokes'; version: 1; slots: Record<string, { strokes: Stroke[] }> }
 
-  const STORE = 'write-hand-lab-v1'
+  const STORE = 'write-hand-lab-v2'
   const SIZES = [16, 48, 200]
 
   function fromFile(f: StrokeFile): Record<string, LabSlot> {
@@ -30,7 +30,7 @@
     } catch {
       // fall through to the sample set
     }
-    return { slots: fromFile(sample as StrokeFile), selected: 'l', pen: { ...PEN_PRESETS.fineliner }, text: 'hello lilly · off to a dandy tea' }
+    return { slots: fromFile(handwriting as StrokeFile), selected: 'l', pen: { ...PEN_PRESETS.fineliner }, text: 'hello lilly · off to a dandy tea' }
   }
 
   const initial = load()
@@ -46,13 +46,17 @@
   let live = $state({ pointer: '-', pressure: 0 })
   let theme = $state<'dark' | 'light' | 'auto'>('auto')
 
-  const clients = Object.fromEntries(ENGINE_IDS.map(id => [id, new BuildClient(200)])) as Record<EngineId, BuildClient>
-  const faces = Object.fromEntries(ENGINE_IDS.map(id => [id, new FaceSwapper(`WH Lab ${id}`)])) as Record<EngineId, FaceSwapper>
-  let results = $state<Partial<Record<EngineId, BuildResult>>>({})
-  let busy = $state<Partial<Record<EngineId, boolean>>>({})
-  let errors = $state<Partial<Record<EngineId, string>>>({})
-  let faceGen = $state<Partial<Record<EngineId, number>>>({})
-  // Last measured (uncached) outline time per engine+slot.
+  // Rows: the three pen presets plus the slider-driven custom pen, all engine B.
+  type RowId = PenStyle | 'custom'
+  const ROWS: RowId[] = ['fineliner', 'marker', 'brush', 'custom']
+  const rowPen = (id: RowId): Pen => (id === 'custom' ? $state.snapshot(pen) : { ...PEN_PRESETS[id], pressure: pen.pressure })
+  const clients = Object.fromEntries(ROWS.map(id => [id, new BuildClient(200)])) as Record<RowId, BuildClient>
+  const faces = Object.fromEntries(ROWS.map(id => [id, new FaceSwapper(`WH Lab ${id}`)])) as Record<RowId, FaceSwapper>
+  let results = $state<Partial<Record<RowId, BuildResult>>>({})
+  let busy = $state<Partial<Record<RowId, boolean>>>({})
+  let errors = $state<Partial<Record<RowId, string>>>({})
+  let faceGen = $state<Partial<Record<RowId, number>>>({})
+  // Last measured (uncached) outline time per row+slot.
   let timing = $state<Record<string, number>>({})
   let fresh = false
 
@@ -65,16 +69,15 @@
     const req = {
       family: 'Lab',
       metrics: DEFAULT_METRICS,
-      pen: $state.snapshot(pen),
       slots: Object.entries(snapshot).map(([id, s]) => ({ id, strokes: s.strokes, rev: s.rev })),
       outlinesFor: [selected],
       fresh,
     }
     fresh = false
-    for (const id of ENGINE_IDS) {
+    for (const id of ROWS) {
       busy[id] = true
       clients[id]
-        .request({ ...req, engine: id })
+        .request({ ...req, engine: 'B', pen: rowPen(id) })
         .then(async res => {
           if (!res) return
           busy[id] = false
@@ -113,7 +116,7 @@
   })
 
   onDestroy(() => {
-    for (const id of ENGINE_IDS) {
+    for (const id of ROWS) {
       clients[id].terminate()
       faces[id].clear()
     }
@@ -163,9 +166,9 @@
     selected = ids.find(i => i !== selected) ?? 'a'
   }
 
-  function loadSample() {
-    if (!confirm('Replace all lab slots with the sample set?')) return
-    slots = fromFile(sample as StrokeFile)
+  function loadSet(file: StrokeFile, label: string) {
+    if (!confirm(`Replace all lab slots with the ${label}?`)) return
+    slots = fromFile(file)
     selected = 'l'
   }
 
@@ -219,10 +222,10 @@
 
 <main class="lab">
   <header class="top">
-    <h1>Engine lab <small>P0 · Gate 1</small></h1>
+    <h1>Pen lab <small>engine B · vector</small></h1>
     <p class="hint">
-      Draw or load strokes, then compare engines <b>A</b> (fontify trace, as-is), <b>A′</b> (trace + pressure) and
-      <b>B</b> (vector). Dev-only page: not part of the build.
+      Draw or load strokes, add synthetic pressure, then compare pen styles side by side. The custom row follows the
+      sliders. Dev-only page: not part of the build.
     </p>
     <div class="row">
       <button class="btn" onclick={() => (theme = theme === 'dark' ? 'light' : theme === 'light' ? 'auto' : 'dark')}>
@@ -279,7 +282,7 @@
       <button class="btn" onclick={strip} disabled={!current.length}>Strip pressure</button>
     </div>
 
-    <h3>Pen (A′ and B)</h3>
+    <h3>Custom pen</h3>
     <div class="row">
       {#each Object.keys(PEN_PRESETS) as style}
         <button class="btn" class:primary={pen.style === style} onclick={() => preset(style as PenStyle)}>{style}</button>
@@ -306,7 +309,8 @@
     <div class="row">
       <button class="btn" onclick={save}>Save JSON</button>
       <label class="btn">Load JSON <input type="file" accept="application/json,.json" onchange={open} hidden /></label>
-      <button class="btn" onclick={loadSample}>Load sample set</button>
+      <button class="btn" onclick={() => loadSet(handwriting as StrokeFile, 'handwriting fixture')}>Load handwriting</button>
+      <button class="btn" onclick={() => loadSet(sample as StrokeFile, 'generated sample set')}>Load generated</button>
     </div>
   </section>
 
@@ -319,13 +323,13 @@
       </div>
     </div>
 
-    {#each ENGINE_IDS as id (id)}
+    {#each ROWS as id (id)}
       {@const r = results[id]}
       {@const contours = r?.outlines[selected] ?? []}
       {@const st = contourStats(contours)}
-      <article class="engine" data-engine={id}>
+      <article class="engine" data-row={id}>
         <header class="row spread">
-          <h3>{ENGINES[id].label} {#if busy[id]}<span class="busy">building…</span>{/if}</h3>
+          <h3>{id} {#if busy[id]}<span class="busy">building…</span>{/if}</h3>
           <dl class="stats">
             <div><dt>glyph</dt><dd>{fmt(timing[`${id}:${selected}`])} ms</dd></div>
             <div><dt>font</dt><dd>{fmt(r?.totalMs)} ms</dd></div>
@@ -367,7 +371,7 @@
       {/each}
     </div>
     <p class="hint">
-      Text uses each engine's real OTF via FontFace (with GSUB). Undrawn characters fall back to serif. “hello lilly”
+      Text uses each row's real OTF via FontFace (with GSUB). Undrawn characters fall back to serif. “hello lilly”
       exercises <code>calt</code> cycling to <code>l.alt1</code>; “off” uses the <code>f_f</code> ligature.
     </p>
   </section>

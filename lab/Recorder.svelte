@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { freehandPolygon } from '../src/lib/engines/trace'
+  import { freehandPolygon } from '../src/lib/engines/freehand'
   import { StrokeBuilder, pointerKind } from '../src/lib/input/pointer'
   import { cellBox, DEFAULT_METRICS, type Metrics } from '../src/lib/model/metrics'
   import type { Pen, Stroke } from '../src/lib/model/project'

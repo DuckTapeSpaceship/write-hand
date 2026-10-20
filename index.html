@@ -7,6 +7,12 @@
     <meta name="description" content="Draw your handwriting in the browser and download it as a font. Nothing leaves your device." />
     <link rel="icon" href="/duct.png" />
     <title>Write-Hand</title>
+    <script>
+      try {
+        var t = localStorage.getItem('wh-theme')
+        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

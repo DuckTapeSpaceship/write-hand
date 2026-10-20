@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('lab builds all three engines and records pen pressure', async ({ page }) => {
+test('lab builds every pen row and records pen pressure', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', e => errors.push(String(e)))
   page.on('console', m => m.type() === 'error' && errors.push(m.text()))
@@ -9,8 +9,8 @@ test('lab builds all three engines and records pen pressure', async ({ page }) =
   await page.evaluate(() => localStorage.clear())
   await page.reload()
 
-  for (const id of ['A', 'A2', 'B']) {
-    const engine = page.locator(`[data-engine="${id}"]`)
+  for (const id of ['fineliner', 'marker', 'brush', 'custom']) {
+    const engine = page.locator(`[data-row="${id}"]`)
     await expect(engine.locator('.busy')).toHaveCount(0, { timeout: 30_000 })
     await expect(engine.locator('.stats dd').nth(2)).not.toHaveText('0')
     await expect(engine.locator('.err')).toHaveCount(0)
@@ -41,12 +41,12 @@ test('lab builds all three engines and records pen pressure', async ({ page }) =
   }, box)
   await expect(page.getByText(/slot z · 1 strokes/)).toBeVisible()
   await expect(page.getByText(/pointer pen/)).toBeVisible()
-  for (const id of ['A', 'A2', 'B']) {
-    await expect(page.locator(`[data-engine="${id}"] .stats dd`).nth(4)).not.toHaveText('0', { timeout: 30_000 })
+  for (const id of ['fineliner', 'marker', 'brush', 'custom']) {
+    await expect(page.locator(`[data-row="${id}"] .stats dd`).nth(4)).not.toHaveText('0', { timeout: 30_000 })
   }
   await page.emulateMedia({ colorScheme: 'light' })
-  await page.screenshot({ path: 'test-results/lab-light.png', fullPage: true })
+  await page.screenshot({ path: 'test-results/screens/lab-light.png', fullPage: true })
   await page.emulateMedia({ colorScheme: 'dark' })
-  await page.screenshot({ path: 'test-results/lab-dark.png', fullPage: true })
+  await page.screenshot({ path: 'test-results/screens/lab-dark.png', fullPage: true })
   expect(errors).toEqual([])
 })

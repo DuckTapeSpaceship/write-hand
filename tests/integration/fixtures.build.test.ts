@@ -1,55 +1,33 @@
-// Fixture strokes → each engine → OTF → HarfBuzz. Fonts are written to
-// tests/.out/fonts/ for `npm run verify` (OTS).
+// Fixture strokes → engine B (each pen preset) → OTF → HarfBuzz. Fonts are
+// written to tests/.out/fonts/ for `npm run verify` (OTS).
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { createCanvas } from '@napi-rs/canvas'
 import { parse } from 'opentype.js'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ENGINES, ENGINE_IDS } from '../../src/lib/engines'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { DEFAULT_ENGINE } from '../../src/lib/engines'
 import { applySyntheticPressure } from '../../src/lib/engines/pressure'
-import { setCanvasFactory, type RasterCanvas } from '../../src/lib/engines/raster'
-import { assembleFont } from '../../src/lib/font/assemble'
+import { assembleFont, type SlotInput } from '../../src/lib/font/assemble'
 import { DEFAULT_METRICS } from '../../src/lib/model/metrics'
-import { PEN_PRESETS } from '../../src/lib/model/project'
+import { PEN_PRESETS, type PenStyle } from '../../src/lib/model/project'
 import { loadStrokeFixture, shape } from '../helpers'
 
 const OUT = new URL('../.out/fonts/', import.meta.url)
+beforeAll(() => mkdirSync(OUT, { recursive: true }))
 
-beforeAll(() => {
-  setCanvasFactory((w, h) => createCanvas(w, h) as unknown as RasterCanvas)
-  mkdirSync(OUT, { recursive: true })
-})
-afterAll(() => setCanvasFactory(null))
-
-const slots = loadStrokeFixture('sample')
+const sample = loadStrokeFixture('sample')
 const handwriting = loadStrokeFixture('handwriting-mouse')
+const STYLES = Object.keys(PEN_PRESETS) as PenStyle[]
 
-describe.each(ENGINE_IDS)('engine %s · real mouse handwriting', id => {
-  it('builds, and liga forms l_l before calt cycles', () => {
-    const font = assembleFont({ family: `Hand ${id}`, metrics: DEFAULT_METRICS, pen: PEN_PRESETS.fineliner, engine: ENGINES[id], slots: handwriting })
-    writeFileSync(new URL(`handwriting-${id}.otf`, OUT), new Uint8Array(font.buffer))
-    expect(font.glyphCount).toBe(handwriting.length)
-    expect(shape(font.buffer, 'hello')).toEqual(['h', 'e', 'l_l', 'o'])
-    expect(shape(font.buffer, 'hello', '-liga')).toEqual(['h', 'e', 'l', 'l.alt1', 'o'])
-    expect(shape(font.buffer, 'lll', '-liga')).toEqual(['l', 'l.alt1', 'l.alt2'])
-    expect(shape(font.buffer, 'lilt')).toEqual(['l', 'i', 'l.alt1', 't'])
-    expect(shape(font.buffer, 'off')).toEqual(['o', 'f_f'])
-  })
-})
+function build(slots: SlotInput[], style: PenStyle, family: string) {
+  return assembleFont({ family, metrics: DEFAULT_METRICS, pen: PEN_PRESETS[style], engine: DEFAULT_ENGINE, slots })
+}
 
-describe.each(ENGINE_IDS)('engine %s', id => {
-  const build = (pressured = false) =>
-    assembleFont({
-      family: `Sample ${id}`,
-      metrics: DEFAULT_METRICS,
-      pen: PEN_PRESETS.fineliner,
-      engine: ENGINES[id],
-      slots: pressured ? slots.map(s => ({ ...s, strokes: s.strokes.map(st => applySyntheticPressure(st, 'taper')) })) : slots,
-    })
+const tapered = (slots: SlotInput[]) => slots.map(s => ({ ...s, strokes: s.strokes.map(st => applySyntheticPressure(st, 'taper')) }))
 
-  it('builds a font that HarfBuzz shapes with cycling alternates and ligatures', () => {
-    const font = build()
-    writeFileSync(new URL(`sample-${id}.otf`, OUT), new Uint8Array(font.buffer))
-    expect(font.glyphCount).toBe(slots.length)
+describe.each(STYLES)('pen %s', style => {
+  it('sample set: cycling alternates and ligatures shape in HarfBuzz', () => {
+    const font = build(sample, style, `Sample ${style}`)
+    writeFileSync(new URL(`sample-${style}.otf`, OUT), new Uint8Array(font.buffer))
+    expect(font.glyphCount).toBe(sample.length)
     expect(shape(font.buffer, 'hello')).toEqual(['h', 'e', 'l', 'l.alt1', 'o'])
     expect(shape(font.buffer, 'hello lilly')).toEqual(['h', 'e', 'l', 'l.alt1', 'o', 'space', 'l', 'i', 'l.alt1', 'l', 'y'])
     expect(shape(font.buffer, 'off')).toEqual(['o', 'f_f'])
@@ -64,9 +42,20 @@ describe.each(ENGINE_IDS)('engine %s', id => {
     }
   })
 
-  it('builds with synthetic pen pressure', () => {
-    const font = build(true)
-    writeFileSync(new URL(`sample-${id}-taper.otf`, OUT), new Uint8Array(font.buffer))
+  it('sample set with synthetic pen pressure', () => {
+    const font = build(tapered(sample), style, `Taper ${style}`)
+    writeFileSync(new URL(`sample-${style}-taper.otf`, OUT), new Uint8Array(font.buffer))
     expect(shape(font.buffer, 'hello')).toEqual(['h', 'e', 'l', 'l.alt1', 'o'])
+  })
+
+  it('real mouse handwriting: liga forms l_l before calt cycles', () => {
+    const font = build(handwriting, style, `Hand ${style}`)
+    writeFileSync(new URL(`handwriting-${style}.otf`, OUT), new Uint8Array(font.buffer))
+    expect(font.glyphCount).toBe(handwriting.length)
+    expect(shape(font.buffer, 'hello')).toEqual(['h', 'e', 'l_l', 'o'])
+    expect(shape(font.buffer, 'hello', '-liga')).toEqual(['h', 'e', 'l', 'l.alt1', 'o'])
+    expect(shape(font.buffer, 'lll', '-liga')).toEqual(['l', 'l.alt1', 'l.alt2'])
+    expect(shape(font.buffer, 'lilt')).toEqual(['l', 'i', 'l.alt1', 't'])
+    expect(shape(font.buffer, 'off')).toEqual(['o', 'f_f'])
   })
 })

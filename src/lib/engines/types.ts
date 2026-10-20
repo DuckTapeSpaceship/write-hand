@@ -11,7 +11,7 @@ export type PathCmd =
 
 export type Contour = PathCmd[]
 
-export type EngineId = 'A' | 'A2' | 'B'
+export type EngineId = 'B'
 
 export interface OutlineEngine {
   id: EngineId
