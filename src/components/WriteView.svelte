@@ -1,12 +1,14 @@
 <script lang="ts">
   // Large writing canvas: full screen on phones, a modal on larger screens.
   // Prev/next walk the current tier; a one-line live preview stays on top.
-  // (P2 adds ghost neighbours and the x-height drag.)
+  // Ghost neighbours show the previous/next glyph at the edges; the x-height
+  // guide can be dragged to match your hand.
   import { SLOT_BY_ID } from '../lib/model/charset'
+  import { cellBox } from '../lib/model/metrics'
   import { inputMode } from '../lib/input/mode.svelte'
   import { live, PREVIEW_FAMILY } from '../lib/preview/live.svelte'
   import { segment } from '../lib/preview/sentences'
-  import { project } from '../lib/store/project.svelte'
+  import { hasGlyph, project } from '../lib/store/project.svelte'
   import { clearWithUndo } from '../lib/ui/actions'
   import DrawSurface from './DrawSurface.svelte'
 
@@ -28,8 +30,32 @@
   const idx = $derived(order.indexOf(id))
   const def = $derived(SLOT_BY_ID.get(id))
   const strokes = $derived(project.strokes(id))
-  const has = (ch: string) => project.has(ch)
-  const segments = $derived(segment(text, has))
+  const segments = $derived(segment(text, hasGlyph))
+  const ghosts = $derived.by(() => {
+    const out: { strokes: typeof strokes; side: 'left' | 'right' }[] = []
+    const prev = order[idx - 1]
+    const next = order[idx + 1]
+    if (prev && project.has(prev)) out.push({ strokes: project.strokes(prev), side: 'left' })
+    if (next && project.has(next)) out.push({ strokes: project.strokes(next), side: 'right' })
+    return out
+  })
+
+  const cell = $derived(cellBox(project.metrics))
+  const xTop = $derived(((cell.top - project.metrics.xHeight) / (cell.top - cell.bottom)) * 100)
+  let surface: HTMLDivElement
+  let dragging = false
+
+  function setXHeight(v: number) {
+    const m = project.metrics
+    const xHeight = Math.round(Math.max(m.capHeight * 0.4, Math.min(m.capHeight - 60, v)) / 5) * 5
+    if (xHeight !== m.xHeight) project.metrics = { ...m, xHeight }
+  }
+
+  function dragMove(e: PointerEvent) {
+    if (!dragging) return
+    const r = surface.getBoundingClientRect()
+    setXHeight(cell.top - ((e.clientY - r.top) / r.height) * (cell.top - cell.bottom))
+  }
 
   $effect(() => {
     dialog.showModal()
@@ -83,10 +109,11 @@
     </p>
   {/key}
 
-  <div class="canvas">
+  <div class="canvas" bind:this={surface}>
     {#key id}
       <DrawSurface
         {strokes}
+        {ghosts}
         pen={project.pen}
         metrics={project.metrics}
         touch="draw"
@@ -95,6 +122,35 @@
         onpen={() => inputMode.markPen()}
       />
     {/key}
+    <div
+      class="xh"
+      style:top="{xTop}%"
+      role="slider"
+      tabindex="0"
+      aria-label="x-height"
+      aria-valuemin={Math.round(project.metrics.capHeight * 0.4)}
+      aria-valuemax={project.metrics.capHeight - 60}
+      aria-valuenow={project.metrics.xHeight}
+      title="Drag to set your x-height"
+      onpointerdown={e => {
+        e.preventDefault()
+        e.stopPropagation()
+        dragging = true
+        ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+      }}
+      onpointermove={dragMove}
+      onpointerup={() => (dragging = false)}
+      onpointercancel={() => (dragging = false)}
+      onkeydown={e => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault()
+          e.stopPropagation()
+          setXHeight(project.metrics.xHeight + (e.key === 'ArrowUp' ? 5 : -5))
+        }
+      }}
+    >
+      <span>x</span>
+    </div>
   </div>
 
   <footer class="bar">
@@ -165,12 +221,65 @@
     border-radius: 3px;
   }
   .canvas {
+    position: relative;
     width: min(92vw, 70vh, 640px);
     margin: 0 auto;
     border: var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     overflow: hidden;
+  }
+  .xh {
+    position: absolute;
+    right: 0;
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    background: var(--accent);
+    color: var(--on-accent);
+    border: var(--border);
+    border-right: 0;
+    border-radius: var(--radius) 0 0 var(--radius);
+    font-weight: 600;
+    cursor: ns-resize;
+    touch-action: none;
+  }
+  /* Landscape phones: canvas on one side, controls and preview on the other. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .write {
+      width: 100vw;
+      max-width: 100vw;
+      height: 100dvh;
+      margin: 0;
+      border-radius: 0;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto 1fr auto;
+      gap: 6px 16px;
+      padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
+    }
+    .write[open] {
+      display: grid;
+    }
+    header.bar {
+      grid-column: 1;
+    }
+    .strip {
+      grid-column: 1;
+      white-space: normal;
+      overflow-y: auto;
+    }
+    footer.bar {
+      grid-column: 1;
+      margin: 0;
+    }
+    .canvas {
+      grid-column: 2;
+      grid-row: 1 / 4;
+      width: calc(100dvh - 24px);
+    }
   }
   @media (max-width: 599px) {
     .write {

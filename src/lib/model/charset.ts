@@ -1,5 +1,6 @@
 // Tiers of slots to draw. Slot ids: base characters are the character itself;
 // later tiers add 'a.alt1', 'f_f' and 'mark.acute'.
+import { MARKS } from '../font/compose'
 import type { SlotKind } from './project'
 
 export type TierId = 'required' | 'recommended' | 'alternates' | 'ligatures' | 'accents'
@@ -11,6 +12,8 @@ export interface SlotDef {
   /** What the cell label shows. */
   label: string
   tier: TierId
+  /** Small note next to the label, e.g. the mark's name. */
+  hint?: string
 }
 
 export interface SlotGroup {
@@ -45,6 +48,17 @@ export const TIERS: Tier[] = [
     id: 'recommended',
     label: 'Recommended',
     groups: [{ label: 'Punctuation & symbols', slots: [...RECOMMENDED_PUNCT].map(base('recommended')) }],
+  },
+  {
+    id: 'accents',
+    label: 'Accents',
+    groups: [
+      {
+        label: 'Marks · composed onto your letters (é, ñ, ü, ç …)',
+        slots: MARKS.map(m => ({ id: `mark.${m.name}`, kind: 'mark' as const, unicode: m.unicode, label: m.label, hint: m.name, tier: 'accents' as const })),
+      },
+      { label: 'Letters & symbols', slots: [...'ßÆæØøŒœ¿¡«»€£'].map(base('accents')) },
+    ],
   },
 ]
 

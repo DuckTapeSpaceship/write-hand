@@ -1,6 +1,7 @@
 <script lang="ts">
   // fontify's sticky sentence, extended: presets, auto mode, missing-glyph
   // highlighting (tap to jump to the cell) and OpenType feature toggles.
+  import { DECOMPOSE } from '../lib/font/compose'
   import { SLOT_BY_ID } from '../lib/model/charset'
   import { live, PREVIEW_FAMILY } from '../lib/preview/live.svelte'
   import { PRESETS, segment } from '../lib/preview/sentences'
@@ -11,6 +12,7 @@
     has,
     features = $bindable(),
     compact = false,
+    expanded = $bindable(false),
     onmissing,
   }: {
     text: string
@@ -18,6 +20,7 @@
     has: (ch: string) => boolean
     features: { calt: boolean; liga: boolean; ss01: boolean }
     compact?: boolean
+    expanded?: boolean
     onmissing: (ch: string) => void
   } = $props()
 
@@ -37,7 +40,8 @@
   }
 </script>
 
-<div class="preview" class:compact>
+<div class="preview" class:compact class:expanded>
+  {#if !compact || expanded}
   <div class="controls">
     <input
       class="sentence"
@@ -63,10 +67,15 @@
       {/each}
     </div>
   </div>
+  {/if}
 
   {#key live.gen}
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
     <p
       class="render"
+      onclick={e => {
+        if (compact && !(e.target as HTMLElement).closest('button')) expanded = !expanded
+      }}
       data-testid="preview"
       style:font-family={live.ready ? `'${PREVIEW_FAMILY}', var(--font-ui)` : 'var(--font-ui)'}
       style:font-feature-settings={featureCss}
@@ -74,7 +83,7 @@
     >
       {#each segments as seg, i (i)}
         {#if seg.missing}
-          {@const known = SLOT_BY_ID.has(seg.text)}
+          {@const known = SLOT_BY_ID.has(seg.text) || seg.text in DECOMPOSE}
           <button
             class="missing"
             disabled={!known}
@@ -85,16 +94,42 @@
       {/each}
     </p>
   {/key}
+  {#if compact}
+    <button class="expand" aria-expanded={expanded} aria-label={expanded ? 'Close sentence settings' : 'Edit sentence'} onclick={() => (expanded = !expanded)}>
+      {expanded ? '▴' : '✎'}
+    </button>
+  {/if}
+  {#if !compact || expanded}
   <p class="status">
     {#if missingCount}<span><mark>{missingCount}</mark> to draw · tap one to jump there</span>{:else if live.ready}<span>All drawn ✓</span>{/if}
     {#if live.error}<span class="err">Build error: {live.error}</span>{/if}
   </p>
+  {/if}
 </div>
 
 <style>
   .preview {
+    position: relative;
     display: grid;
     gap: 6px;
+  }
+  .compact .render {
+    padding-right: 44px;
+  }
+  .expand {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 38px;
+    height: 34px;
+    background: var(--bg);
+    border: var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  .compact.expanded .expand {
+    bottom: auto;
+    top: 0;
   }
   .controls {
     display: flex;
@@ -125,9 +160,23 @@
     max-height: 2.7em;
     overflow-y: auto;
   }
+  @media (min-width: 600px) and (max-width: 1100px) {
+    .render {
+      font-size: 40px;
+      max-height: 2.6em;
+    }
+  }
   .compact .render {
     font-size: 26px;
     max-height: 1.35em;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .compact.expanded .render {
+    white-space: normal;
+    max-height: 20vh;
+    overflow-y: auto;
   }
   .missing {
     font: inherit;

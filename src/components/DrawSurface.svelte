@@ -16,7 +16,7 @@
     metrics,
     touch = 'draw',
     label = 'drawing area',
-    ghost = '',
+    ghosts = [],
     onstroke,
     onlongpress,
     ontap,
@@ -27,8 +27,8 @@
     metrics: Metrics
     touch?: TouchPolicy
     label?: string
-    /** Optional faint character drawn behind the guides (a hint, not traced). */
-    ghost?: string
+    /** Neighbouring glyphs drawn faintly at the edges, for consistent size and baseline. */
+    ghosts?: { strokes: Stroke[]; side: 'left' | 'right' }[]
     onstroke: (s: Stroke) => void
     onlongpress?: (at: { x: number; y: number }) => void
     ontap?: () => void
@@ -74,17 +74,8 @@
     ctx.clearRect(0, 0, w, w)
     const k = w / cell.width
 
-    if (ghost) {
-      ctx.fillStyle = cssVar('--comment')
-      ctx.globalAlpha = 0.25
-      ctx.font = `${Math.round(metrics.capHeight * k)}px "Space Grotesk", sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'alphabetic'
-      ctx.fillText(ghost, w / 2, cell.top * k)
-      ctx.globalAlpha = 1
-    }
-
     ctx.setTransform(k, 0, 0, -k, -cell.left * k, cell.top * k) // font units, y up
+    for (const g of ghosts) drawGhost(ctx, g.strokes, g.side)
     const line = (y: number, dashed: boolean) => {
       ctx.beginPath()
       ctx.setLineDash(dashed ? [6 / k, 6 / k] : [])
@@ -114,9 +105,35 @@
   }
 
   $effect(() => {
-    void [strokes, pen, metrics, cssSize, ghost]
+    void [strokes, pen, metrics, cssSize, ghosts]
     redraw()
   })
+
+  /** A neighbour, shifted so its ink just peeks in from the cell edge. */
+  function drawGhost(ctx: CanvasRenderingContext2D, ghost: Stroke[], side: 'left' | 'right') {
+    let minX = Infinity, maxX = -Infinity
+    for (const s of ghost) for (let i = 0; i < s.pts.length; i += 4) {
+      minX = Math.min(minX, s.pts[i])
+      maxX = Math.max(maxX, s.pts[i])
+    }
+    if (!Number.isFinite(minX)) return
+    const r = pen.size / 2
+    const dx = side === 'left' ? cell.left + cell.width * 0.16 - (maxX + r) : cell.left + cell.width * 0.84 - (minX - r)
+    ctx.save()
+    ctx.translate(dx, 0)
+    ctx.globalAlpha = 0.22
+    ctx.fillStyle = cssVar('--fg')
+    for (const s of ghost) {
+      const poly = freehandPolygon(s, pen)
+      if (poly.length < 3) continue
+      ctx.beginPath()
+      ctx.moveTo(poly[0][0], poly[0][1])
+      for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1])
+      ctx.closePath()
+      ctx.fill()
+    }
+    ctx.restore()
+  }
 
   $effect(() => {
     const ro = new ResizeObserver(([e]) => (cssSize = e.contentRect.width))

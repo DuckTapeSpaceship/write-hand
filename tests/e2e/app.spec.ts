@@ -31,8 +31,7 @@ test('strokes survive a reload (IndexedDB)', async ({ page }) => {
     [0.8, 0.8],
   ])
   await expect(cell(page, 'a')).toHaveClass(/filled/)
-  await page.waitForTimeout(700) // autosave debounce
-  await page.reload()
+  await page.reload() // immediately: inside the autosave debounce
   await expect(cell(page, 'a')).toHaveClass(/filled/)
   await cell(page, 'a').click({ button: 'right', force: true, position: { x: 20, y: 10 } })
   await page.getByRole('menuitem', { name: 'Undo last stroke' }).click()

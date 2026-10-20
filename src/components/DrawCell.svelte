@@ -65,7 +65,7 @@
 >
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="head" onpointerdown={labelPress}>
-    <span class="char">{def.label}</span>
+    <span class="char">{def.label}{#if def.hint}<small>{def.hint}</small>{/if}</span>
     {#if filled}
       <button class="clear" title="Clear “{def.label}”" aria-label="Clear {def.label}" onclick={() => clearWithUndo(def.id)}>×</button>
     {/if}
@@ -116,6 +116,12 @@
   .char {
     font-weight: 600;
     font-size: 1.05rem;
+  }
+  .char small {
+    font-weight: 400;
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-left: 8px;
   }
   .clear {
     display: grid;

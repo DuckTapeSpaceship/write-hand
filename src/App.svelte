@@ -1,19 +1,22 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import CellMenu from './components/CellMenu.svelte'
+  import SettingsMenu from './components/SettingsMenu.svelte'
   import GlyphGrid from './components/GlyphGrid.svelte'
   import Preview from './components/Preview.svelte'
   import ThemeToggle from './components/ThemeToggle.svelte'
   import TierChips from './components/TierChips.svelte'
   import Toasts from './components/Toasts.svelte'
   import WriteView from './components/WriteView.svelte'
-  import { inputMode, type FingerPref } from './lib/input/mode.svelte'
+  import { DECOMPOSE, markSlotId } from './lib/font/compose'
+  import { inputMode } from './lib/input/mode.svelte'
   import { REQUIRED_IDS, SLOT_BY_ID, TIERS, tierSlots, type TierId } from './lib/model/charset'
   import { live } from './lib/preview/live.svelte'
   import { pickAuto } from './lib/preview/sentences'
   import { downloadBlob, slugify } from './lib/store/file'
-  import { project } from './lib/store/project.svelte'
+  import { hasGlyph, project } from './lib/store/project.svelte'
   import { cellDomId, clearWithUndo } from './lib/ui/actions'
+  import { prefs } from './lib/ui/prefs.svelte'
   import { toasts } from './lib/ui/toast.svelte'
 
   const version = __APP_VERSION__
@@ -26,8 +29,10 @@
   let auto = $state(readAuto())
   let text = $state(project.sample)
   let exporting = $state(false)
+  let expanded = $state(false) // phone: preview panel open
 
-  const has = (ch: string) => project.has(ch)
+  const has = hasGlyph
+  const phone = $derived(inputMode.phone)
   const requiredDone = $derived(REQUIRED_IDS.filter(id => project.has(id)).length)
   const requiredLeft = $derived(REQUIRED_IDS.length - requiredDone)
   const tier = $derived(TIERS.find(t => t.id === activeTier)!)
@@ -61,6 +66,20 @@
 
   $effect(() => live.start())
   $effect(() => project.autosave())
+  $effect(() => prefs.apply())
+
+  // Phone: the expanded preview folds away once you scroll on.
+  $effect(() => {
+    if (!phone || !expanded) return
+    const y0 = scrollY
+    const onScroll = () => {
+      // Don't fold while typing in the sentence or the name.
+      if (document.activeElement?.matches('.top input, .top select')) return
+      if (Math.abs(scrollY - y0) > 60) expanded = false
+    }
+    addEventListener('scroll', onScroll, { passive: true })
+    return () => removeEventListener('scroll', onScroll)
+  })
 
   function openMenu(id: string, at: { x: number; y: number }) {
     menu = { id, x: at.x, y: at.y }
@@ -72,9 +91,19 @@
     writing = id
   }
 
-  async function jumpTo(ch: string) {
-    const def = SLOT_BY_ID.get(ch)
-    if (!def) return
+  /** The slot to draw for a missing character (accents: the missing part). */
+  function slotFor(ch: string): string | null {
+    if (SLOT_BY_ID.has(ch)) return ch
+    const d = DECOMPOSE[ch]
+    if (!d) return null
+    return project.has(d[0]) ? markSlotId(d[1]) : d[0]
+  }
+
+  async function jumpTo(missing: string) {
+    const ch = slotFor(missing)
+    const def = ch ? SLOT_BY_ID.get(ch) : undefined
+    if (!ch || !def) return
+    expanded = false
     if (inputMode.phone && inputMode.touch === 'tap') return openWrite(ch)
     activeTier = def.tier
     await tick()
@@ -96,28 +125,34 @@
   }
 </script>
 
-<header class="top">
+<header class="top" class:phone>
   <div class="row brand-row">
     <div class="brand">
       <img src="/duct.png" alt="" width="28" height="28" />
       <span>Write-Hand</span>
     </div>
-    <input class="name" bind:value={project.name} aria-label="Font name" placeholder="Your font name" maxlength="64" />
+    {#if !phone}
+      <input class="name" bind:value={project.name} aria-label="Font name" placeholder="Your font name" maxlength="64" />
+    {/if}
     <div class="progress" title="{requiredDone} of {REQUIRED_IDS.length} required characters drawn">
       <div class="bar" role="progressbar" aria-label="Required characters" aria-valuemin="0" aria-valuemax={REQUIRED_IDS.length} aria-valuenow={requiredDone}>
         <div class="fill" style:width="{(requiredDone / REQUIRED_IDS.length) * 100}%"></div>
       </div>
       <span class="count">{requiredDone}/{REQUIRED_IDS.length}</span>
     </div>
-    <button class="btn primary" onclick={exportOtf} disabled={requiredLeft > 0 || exporting} data-testid="download">
-      {exporting ? 'Building…' : 'Download .otf'}
+    <button class="btn primary" onclick={exportOtf} disabled={requiredLeft > 0 || exporting} data-testid="download" title={requiredLeft ? `${requiredLeft} required characters left` : 'Download your font'}>
+      {exporting ? 'Building…' : phone && requiredLeft ? `${requiredLeft} left` : phone ? '.otf' : 'Download .otf'}
     </button>
+    <SettingsMenu />
     <ThemeToggle />
   </div>
-  {#if requiredLeft > 0}
+  {#if !phone && requiredLeft > 0}
     <p class="left"><span class="pill">{requiredLeft} required left</span> before you can download</p>
   {/if}
-  <Preview bind:text bind:auto bind:features {has} compact={inputMode.phone} onmissing={jumpTo} />
+  {#if phone && expanded}
+    <input class="name" bind:value={project.name} aria-label="Font name" placeholder="Your font name" maxlength="64" />
+  {/if}
+  <Preview bind:text bind:auto bind:features bind:expanded {has} compact={phone} onmissing={jumpTo} />
   <TierChips bind:active={activeTier} />
 </header>
 
@@ -126,14 +161,6 @@
 </main>
 
 <footer class="foot">
-  <label class="setting">
-    Finger
-    <select value={inputMode.finger} onchange={e => inputMode.setFinger(e.currentTarget.value as FingerPref)}>
-      <option value="auto">Auto ({inputMode.penSeen ? 'pen seen: tap to open' : inputMode.phone ? 'tap to open' : 'draw in grid'})</option>
-      <option value="draw">Draw in grid</option>
-      <option value="view">Open write view</option>
-    </select>
-  </label>
   <p>
     Everything stays in your browser. Built on ideas and code from
     <a href="https://github.com/alexkroeker177/fontify" target="_blank" rel="noreferrer">fontify</a> (MIT).
@@ -252,18 +279,10 @@
     opacity: 0.6;
     margin-left: 6px;
   }
-  .setting {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-  :global(:root) {
-    --cell-min: 160px;
+  .phone .brand span {
+    display: none;
   }
   @media (max-width: 599px) {
-    :global(:root) {
-      --cell-min: 140px;
-    }
     .brand span {
       display: none;
     }
@@ -271,9 +290,14 @@
       width: 70px;
     }
   }
-  @media (min-width: 600px) and (max-width: 1100px) {
-    :global(:root) {
-      --cell-min: 170px;
-    }
+  .phone.top {
+    gap: 4px;
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+  .phone .progress {
+    flex: 1;
+  }
+  .phone .bar {
+    flex: 1;
   }
 </style>

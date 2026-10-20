@@ -1,7 +1,9 @@
 import { Font, Glyph, Path } from 'opentype.js'
 import type { Contour } from '../engines/types'
 import type { Metrics } from '../model/metrics'
+import { buildGpos } from './gpos'
 import { buildGsub } from './gsub'
+import type { KernTable } from './kerning'
 import { spliceTables } from './sfnt'
 
 export interface GlyphInput {
@@ -19,8 +21,8 @@ export interface FontInput {
   /** Names: base → alternates in cycle order. */
   alternates?: { base: string; alts: string[] }[]
   ligatures?: { components: string[]; glyph: string }[]
-  /** Pre-serialized GPOS table (kerning), spliced in as-is. */
-  gpos?: Uint8Array | null
+  /** Pair kerning by glyph name (GPOS kern, PairPos format 2). */
+  kerning?: KernTable
   spaceAdvance?: number
 }
 
@@ -76,8 +78,20 @@ export function buildFont(input: FontInput): BuiltFont {
     .map(l => ({ components: l.components.map(c => id(c)!), glyph: id(l.glyph)! }))
 
   const gsub = buildGsub({ numGlyphs: glyphs.length, alternates, ligatures })
+  const kernIds = new Map<number, Map<number, number>>()
+  for (const [l, row] of input.kerning ?? []) {
+    const li = id(l)
+    if (li === undefined) continue
+    const out = new Map<number, number>()
+    for (const [r, v] of row) {
+      const ri = id(r)
+      if (ri !== undefined && v) out.set(ri, v)
+    }
+    if (out.size) kernIds.set(li, out)
+  }
+  const gpos = buildGpos(kernIds)
   const raw = font.toArrayBuffer()
-  const buffer = spliceTables(raw, { GSUB: gsub, GPOS: input.gpos ?? null })
+  const buffer = spliceTables(raw, { GSUB: gsub, GPOS: gpos })
   return { buffer, glyphIds }
 }
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildFont, type GlyphInput } from '../../src/lib/font/build'
 import { DEFAULT_METRICS } from '../../src/lib/model/metrics'
 import type { Contour } from '../../src/lib/engines/types'
-import { shape } from '../helpers'
+import { shape, shapePositions } from '../helpers'
 
 const box = (w: number, h: number): Contour[] => [
   [
@@ -71,5 +71,18 @@ describe('GSUB liga', () => {
   it('forms drawn ligatures before calt runs', () => {
     expect(shape(f, 'off')).toEqual(['o', 'f_f'])
     expect(shape(f, 'off', '-liga')).toEqual(['o', 'f', 'f.alt1'])
+  })
+})
+
+describe('GPOS PairPos 2 at scale', () => {
+  it('splits a large class matrix into subtables that HarfBuzz still reads', () => {
+    const names = Array.from({ length: 300 }, (_, i) => `g${i}`)
+    const glyphs = names.map((n, i) => ({ name: n, unicode: 0x4e00 + i, contours: box(200, 400), advance: 300 }))
+    const kerning = new Map<string, Map<string, number>>()
+    // Every row and column distinct → 301 x 301 classes, > 64 KB in one subtable.
+    names.forEach((l, i) => kerning.set(l, new Map(names.map((r, j) => [r, -((i * 7 + j * 3) % 90) - 10]))))
+    const f = buildFont({ family: 'Big', metrics: DEFAULT_METRICS, glyphs, kerning }).buffer
+    const pos = shapePositions(f, String.fromCodePoint(0x4e00 + 250, 0x4e00 + 17))
+    expect(pos[0].xAdvance).toBe(300 - ((250 * 7 + 17 * 3) % 90) - 10)
   })
 })

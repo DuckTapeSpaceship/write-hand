@@ -9,6 +9,7 @@ import { assembleFont, type SlotInput } from '../../src/lib/font/assemble'
 import { DEFAULT_METRICS } from '../../src/lib/model/metrics'
 import { PEN_PRESETS, type PenStyle } from '../../src/lib/model/project'
 import { loadStrokeFixture, shape } from '../helpers'
+import { MARK_STROKES } from '../fixtures/synthetic'
 
 const OUT = new URL('../.out/fonts/', import.meta.url)
 beforeAll(() => mkdirSync(OUT, { recursive: true }))
@@ -57,5 +58,18 @@ describe.each(STYLES)('pen %s', style => {
     expect(shape(font.buffer, 'lll', '-liga')).toEqual(['l', 'l.alt1', 'l.alt2'])
     expect(shape(font.buffer, 'lilt')).toEqual(['l', 'i', 'l.alt1', 't'])
     expect(shape(font.buffer, 'off')).toEqual(['o', 'f_f'])
+  })
+})
+
+describe('accents + kerning', () => {
+  it('composes accented letters from drawn marks and passes HarfBuzz', () => {
+    const slots = [...handwriting, ...Object.entries(MARK_STROKES).map(([id, strokes]) => ({ id, strokes }))]
+    const font = build(slots, 'fineliner', 'Hand Accents')
+    writeFileSync(new URL('handwriting-accents.otf', OUT), new Uint8Array(font.buffer))
+    const parsed = parse(font.buffer)
+    // handwriting fixture has a d e h i l n o t y f H
+    for (const ch of 'áàâãäåéèêëíìîïóòôõöñýÿ') expect(parsed.charToGlyph(ch).index, ch).toBeGreaterThan(1)
+    expect(shape(font.buffer, 'défi')).toEqual(['d', 'uni00E9', 'f', 'i'])
+    expect(font.kernPairs).toBeGreaterThan(0)
   })
 })

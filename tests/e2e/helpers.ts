@@ -94,5 +94,10 @@ export async function freshApp(page: Page) {
 }
 
 export async function setSentence(page: Page, text: string) {
-  await page.getByLabel('Preview sentence').fill(text)
+  const input = page.getByLabel('Preview sentence')
+  if (!(await input.isVisible())) await page.getByRole('button', { name: 'Edit sentence' }).click() // phone
+  await input.fill(text)
 }
+
+/** Pixels of a canvas, for before/after comparisons. */
+export const canvasData = (canvas: Locator) => canvas.evaluate(el => (el as HTMLCanvasElement).toDataURL())

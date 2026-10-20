@@ -14,7 +14,7 @@ export function baseGlyphName(cp: number): string {
 export function slotGlyphName(slotId: string): string {
   const alt = /^(.+)\.(alt\d+)$/u.exec(slotId)
   if (alt) return `${slotGlyphName(alt[1])}.${alt[2]}`
-  if (slotId.startsWith('mark.')) return slotId
+  if (slotId.startsWith('mark.')) return slotId.slice(5) // AGL spacing-mark names: acute, dieresis…
   if ([...slotId].length === 1) return baseGlyphName(slotId.codePointAt(0)!)
   if (slotId.includes('_')) return slotId.split('_').map(slotGlyphName).join('_')
   return slotId

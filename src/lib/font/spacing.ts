@@ -1,4 +1,5 @@
 import type { Contour, PathCmd } from '../engines/types'
+import { edgeProfile } from './profile'
 
 export interface Bounds {
   xMin: number
@@ -103,6 +104,50 @@ export function spaceGlyph(contours: Contour[], bearing: number | ((width: numbe
     advance: Math.round(width + 2 * sb),
     lsb: sb,
     rsb: sb,
+    bounds: { ...b, xMin: b.xMin + shift, xMax: b.xMax + shift },
+  }
+}
+
+/** Base sidebearing: a tenth of the x-height (42 units by default). */
+export function baseBearing(xHeight: number): number {
+  return Math.max(16, Math.round(xHeight * 0.1))
+}
+
+/** Optical sidebearings: straight sides get the full base bearing, sides that
+ *  recede (o, c, v) get less, in proportion to their average depth. */
+export function opticalBearings(contours: Contour[], xHeight: number, capHeight: number): { lsb: number; rsb: number } | null {
+  const b = contourBounds(contours)
+  if (!b) return null
+  const base = baseBearing(xHeight)
+  const height = b.yMax - b.yMin
+  if (height < xHeight * 0.3) return { lsb: base, rsb: base } // punctuation, marks
+  const y0 = Math.max(b.yMin, 0)
+  const y1 = Math.min(b.yMax, b.yMax > xHeight * 1.2 ? capHeight : xHeight)
+  if (y1 - y0 < xHeight * 0.3) return { lsb: base, rsb: base }
+  const p = edgeProfile(contours, y0, y1, 16)
+  let ld = 0, rd = 0, n = 0
+  for (let i = 0; i < p.left.length; i++) {
+    if (Number.isNaN(p.left[i])) continue
+    ld += p.left[i] - b.xMin
+    rd += b.xMax - p.right[i]
+    n++
+  }
+  if (!n) return { lsb: base, rsb: base }
+  const cap = base * 1.5
+  const side = (depth: number) => Math.round(Math.max(base * 0.3, base - 0.35 * Math.min(cap, depth / n)))
+  return { lsb: side(ld), rsb: side(rd) }
+}
+
+export function spaceGlyphOptical(contours: Contour[], xHeight: number, capHeight: number): Spaced | null {
+  const b = contourBounds(contours)
+  const sb = opticalBearings(contours, xHeight, capHeight)
+  if (!b || !sb) return null
+  const shift = sb.lsb - b.xMin
+  return {
+    contours: mapContours(contours, x => x + shift, y => y),
+    advance: Math.round(b.xMax - b.xMin + sb.lsb + sb.rsb),
+    lsb: sb.lsb,
+    rsb: sb.rsb,
     bounds: { ...b, xMin: b.xMin + shift, xMax: b.xMax + shift },
   }
 }
