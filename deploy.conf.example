@@ -12,3 +12,5 @@ set -gx IMAGE_TAG   "latest"             # tag the box runs
 set -gx DEPLOY_HOST "user@web-box"        # SSH target running docker compose
 set -gx DEPLOY_DIR  "~/Applications/write-hand"  # dir on the host holding docker-compose.yml
 set -gx PORT        "8340"               # host port the host Caddy proxies to
+# set -gx BIND      "10.0.0.5"           # address to publish on (default 127.0.0.1); a LAN IP
+#                                        # when the proxy is another box: firewall it to that box only

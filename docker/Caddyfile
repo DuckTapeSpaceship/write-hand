@@ -16,6 +16,8 @@
 		Referrer-Policy no-referrer
 		X-Frame-Options DENY
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		# Other sites can't embed our scripts, wasm or images (bandwidth hotlinking).
+		Cross-Origin-Resource-Policy same-origin
 		-Server
 	}
 
@@ -30,8 +32,12 @@
 	@woff2 path /assets/woff2.worker-*.js
 	header @woff2 Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src data:"
 
-	# Hashed build output never changes under the same name.
-	@immutable path /assets/*
+	# Hashed build output never changes under the same name. Only for files
+	# that exist: a 404 must not be cached for a year by Cloudflare or browsers.
+	@immutable {
+		path /assets/*
+		file
+	}
 	header @immutable Cache-Control "public, max-age=31536000, immutable"
 
 	# Entry points must be revalidated so updates (and the service worker) land at once.
@@ -45,8 +51,20 @@
 		respond "ok" 200
 	}
 
+	# A missing asset is a 404, never the SPA page: index.html served as
+	# /assets/x.js would be cached under that name (immutable) and break clients.
+	# `precompressed`: .br/.gz siblings from scripts/precompress.mjs, so a
+	# cache-busting flood costs disk reads, not CPU.
+	handle /assets/* {
+		file_server {
+			precompressed br gzip
+		}
+	}
+
 	handle {
 		try_files {path} /index.html
-		file_server
+		file_server {
+			precompressed br gzip
+		}
 	}
 }

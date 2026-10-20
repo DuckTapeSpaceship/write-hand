@@ -29,14 +29,14 @@ How a code change becomes the site on the public hostname. Two machines:
 - **Stage 2** (`caddy:2-alpine`): copies `dist/` to `/srv` and runs as UID 65532. The stock Caddy binary carries a `cap_net_bind_service` file capability, which the kernel refuses to exec under `no-new-privileges` with every capability dropped. The image copies the binary without it and listens on unprivileged **:8080**.
 
 ### `docker/Caddyfile`
-- `file_server` from `/srv`, `encode zstd gzip`, SPA fallback to `index.html`.
-- `/assets/*` (hashed): `Cache-Control: public, max-age=31536000, immutable`.
+- `file_server` from `/srv` serving the build's precompressed `.br`/`.gz` siblings (`scripts/precompress.mjs`, run by `npm run build`), SPA fallback to `index.html`. A missing `/assets/*` file is a **404**, never the SPA page.
+- `/assets/*` (hashed, existing files only): `Cache-Control: public, max-age=31536000, immutable`.
 - `/`, `index.html`, `sw.js`, `registerSW.js`, `workbox-*.js`, `manifest.webmanifest`, `theme.js`: `no-cache`, so updates and the service worker land at once (Cloudflare respects it).
 - `GET /healthz` → `200 ok`.
 - Security headers, and a strict **Content-Security-Policy** for the page: scripts only from self plus `wasm-unsafe-eval` for HarfBuzz, no inline scripts. The WOFF2 encoder's worker (`/assets/woff2.worker-*.js`) gets its own narrower policy that allows `unsafe-eval`, because Emscripten's embind needs it. Workers take their CSP from their own script's response, so the page itself never allows eval.
 
 ### `docker-compose.yml`
-`image: ${IMAGE_REF:-git.ducktapespaceship.xyz/arun/write-hand}:${IMAGE_TAG:-latest}`, `restart: unless-stopped`, published on `${BIND:-127.0.0.1}:${PORT:-8340}` → 8080 (localhost only: the host Caddy is the front door). Hardening: `read_only: true`, `user: 65532:65532`, `cap_drop: [ALL]`, `no-new-privileges`, a small tmpfs at `/tmp` for Caddy's runtime dirs. Healthcheck: `wget -qO- http://127.0.0.1:8080/healthz`. **No volumes** and no `.env`: there is no server-side state and there are no secrets.
+`image: ${IMAGE_REF:-git.ducktapespaceship.xyz/arun/write-hand}:${IMAGE_TAG:-latest}`, `restart: unless-stopped`, published on `${BIND:-127.0.0.1}:${PORT:-8340}` → 8080 (localhost only: the host Caddy is the front door). Hardening: `read_only: true`, `user: 65532:65532`, `cap_drop: [ALL]`, `no-new-privileges`, a small tmpfs at `/tmp` for Caddy's runtime dirs, `mem_limit: 128m` / `cpus: 0.5` / `pids_limit: 64`, and rotated logs (3 × 10 MB). Healthcheck: `wget -qO- http://127.0.0.1:8080/healthz`. **No volumes** and no `.env`: there is no server-side state and there are no secrets.
 
 ### `deploy.conf` (gitignored; template `deploy.conf.example`)
 Plain fish `set -gx KEY value` lines: `REGISTRY`, `IMAGE_OWNER`, `IMAGE_NAME`, `IMAGE_TAG` (`latest`), `DEPLOY_HOST` (the web box), `DEPLOY_DIR`, `PORT` (8340).
@@ -115,7 +115,21 @@ curl -sI https://write-hand.example.com/ | grep -i cache    # cache-control: no-
 ssh <web box> 'cd ~/Applications/write-hand && docker compose ps'   # (healthy)
 ```
 
-## 4. Troubleshooting
+## 4. Abuse protection
+
+The app takes no data, so abuse means traffic: floods, cache-busting, hotlinking. Layers, outermost first:
+
+1. **Cloudflare (the real defence; set in the dashboard, not in this repo)**
+   - **Cache rule**: hostname is the app *and* URI path starts with `/assets/` → *Eligible for cache*, **Cache key → Query string: Ignore**. `?x=1`, `?x=2`, … then stop reaching the origin.
+   - **Rate-limiting rule** (the free plan allows one): same hostname, path *not* starting with `/assets/` → **60 requests / 10 s per IP → Block for 10 s**. A real first visit is about 5 non-asset requests.
+   - **Bot Fight Mode** on. **Under Attack Mode** is the panic button.
+2. **Origin lockdown**: only cloudflared should reach the front-door Caddy. If its box has 80/443 open to the internet, anyone can skip Cloudflare by connecting to the IP directly. Check from outside: `curl -skI --resolve <host>:443:<public IP> https://<host>/` must time out or be refused. With `BIND` set to a LAN IP, firewall `PORT` so only the proxy box can reach it.
+3. **Container Caddy**: precompressed files (a cache miss costs a disk read, not ~25 ms of CPU for the 1 MB WOFF2 worker); a 404 for missing assets (no year-long caching of HTML under `.js` names); `Cross-Origin-Resource-Policy: same-origin` (no hotlinking); non-GET methods → 405.
+4. **Docker**: CPU, memory and PID caps, so a flood degrades this app only and not the rest of the box, and log rotation, so it can't fill the disk.
+
+No rate limiting runs at the origin: stock Caddy has none, and behind cloudflared every request arrives from the tunnel's address, so per-IP limits there would need `trusted_proxies` + `Cf-Connecting-IP`. Cloudflare does it better, before the traffic costs anything.
+
+## 5. Troubleshooting
 
 | Symptom | Cause → fix |
 |---|---|

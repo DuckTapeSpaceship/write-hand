@@ -117,6 +117,8 @@ function do_local_image
     set -l asset (curl -s "$base/" | string match -r '/assets/index-[^"]+\.js')
     _check_hdr "$asset is immutable" "$base$asset" "immutable"; or set fails (math $fails + 1)
     _check_hdr "CSP is set" "$base/" "content-security-policy: default-src 'self'"; or set fails (math $fails + 1)
+    _check "missing asset → 404" (curl -s -o /dev/null -w '%{http_code}' "$base/assets/missing-0000.js") "404"; or set fails (math $fails + 1)
+    _check_hdr "$asset served precompressed" "$base$asset" "content-encoding: br"; or set fails (math $fails + 1)
     set -l cid (docker compose -p write-hand-local ps -q write-hand)
     _check "container is read-only" (docker inspect -f '{{.HostConfig.ReadonlyRootfs}}' $cid) "true"; or set fails (math $fails + 1)
     _check "container is non-root" (docker inspect -f '{{.Config.User}}' $cid) "65532:65532"; or set fails (math $fails + 1)
@@ -137,7 +139,7 @@ function _check
 end
 
 function _check_hdr
-    if curl -sI "$argv[2]" | string lower | string match -q "*"(string lower -- "$argv[3]")"*"
+    if curl -sI -H "Accept-Encoding: br, gzip" "$argv[2]" | string lower | string match -q "*"(string lower -- "$argv[3]")"*"
         _ok "$argv[1]"
     else
         _err "$argv[1] — header '$argv[3]' missing on $argv[2]"; return 1
@@ -197,6 +199,8 @@ end
 
 function _remote_compose_env
     printf 'IMAGE_REF=%s IMAGE_TAG=%s PORT=%s' (_sh_quote (image_ref)) (_sh_quote "$IMAGE_TAG") (_sh_quote "$PORT")
+    # Only when set, so a BIND in the box's own .env still wins otherwise.
+    set -q BIND; and test -n "$BIND"; and printf ' BIND=%s' (_sh_quote "$BIND")
 end
 
 # 5) Deploy: copy the compose file, then pull the image and bring it up.

@@ -23,6 +23,17 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp:size=16m,mode=1777
+    # Caps so a request flood can't starve the other services on the box
+    # (Caddy serving static files idles at ~20 MB).
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    # Rotate stdout logs so a flood of error lines can't fill the disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
       interval: 30s
