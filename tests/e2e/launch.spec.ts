@@ -1,13 +1,13 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { cell, cellCanvas, freshApp, stroke } from './helpers'
+import { cellCanvas, freshApp, setTheme, stroke } from './helpers'
 
 const kind = () => {
   const n = test.info().project.name
   return n === 'pixel7' || n === 'iphone15' ? 'phone' : n === 'ipad' ? 'tablet' : 'desktop'
 }
 
-test('first visit: onboarding, then the landing section starts at “a”', async ({ page }) => {
+test('first visit: onboarding once, then from the settings menu', async ({ page }) => {
   await freshApp(page, { onboarded: false })
   const dialog = page.getByRole('dialog', { name: 'Draw each character in its box' })
   await expect(dialog).toBeVisible()
@@ -16,21 +16,23 @@ test('first visit: onboarding, then the landing section starts at “a”', asyn
   await page.getByRole('button', { name: 'Start drawing' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  await expect(page.getByRole('heading', { name: 'Your handwriting, as a font.' })).toBeVisible()
-  await page.getByRole('button', { name: 'Start with “a”' }).click()
-  if (kind() === 'phone') await expect(page.getByRole('dialog', { name: 'Write a' })).toBeVisible()
-  else await expect(cell(page, 'a')).toBeFocused()
-
   await page.reload()
   await expect(page.getByRole('dialog')).toHaveCount(0) // onboarding only once
+  await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('button', { name: 'How it works' }).click()
   await expect(dialog).toBeVisible()
 })
 
-test('landing disappears once something is drawn', async ({ page }) => {
+test('the page starts with the test strip, in the light theme', async ({ page }) => {
   await freshApp(page)
-  await stroke(cellCanvas(page, 'b'))
-  await expect(page.getByRole('heading', { name: 'Your handwriting, as a font.' })).toHaveCount(0)
+  const strip = page.getByLabel('Test strip text')
+  const grid = cellCanvas(page, 'a')
+  expect((await strip.boundingBox())!.y).toBeLessThan((await grid.boundingBox())!.y)
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('radio', { name: 'dark' }).click()
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
 })
 
 test('PWA: manifest with any + maskable icons', async ({ page, request }) => {
@@ -48,8 +50,8 @@ test('PWA: manifest with any + maskable icons', async ({ page, request }) => {
 for (const scheme of ['dark', 'light'] as const) {
   test(`accessibility (axe, ${scheme})`, async ({ page }) => {
     test.skip(kind() === 'tablet', 'covered by phone + desktop')
-    await page.emulateMedia({ colorScheme: scheme })
     await freshApp(page)
+    await setTheme(page, scheme)
     await stroke(cellCanvas(page, 'a'))
     const scan = async (label: string) => {
       const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
@@ -60,7 +62,7 @@ for (const scheme of ['dark', 'light'] as const) {
     await page.getByTestId('export').click()
     await scan('export dialog')
     await page.getByRole('button', { name: 'Close export' }).click()
-    await page.getByRole('button', { name: 'Pen and layout settings' }).click()
+    await page.getByRole('button', { name: 'Settings' }).click()
     await scan('settings')
   })
 }

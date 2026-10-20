@@ -75,6 +75,7 @@
     pen={project.pen}
     metrics={project.metrics}
     touch={inputMode.touch}
+    twoFingerScroll
     label="Draw {def.label}"
     onstroke={s => project.addStroke(def.id, s)}
     onlongpress={at => onmenu(def.id, at)}

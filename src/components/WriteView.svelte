@@ -155,7 +155,7 @@
   </div>
 
   <footer class="bar">
-    <button class="btn" onclick={() => project.undoStroke(id)} disabled={!strokes.length}>Undo stroke</button>
+    <button class="btn" onclick={() => project.undoStroke(id)} disabled={!strokes.length}>Undo</button>
     <button class="btn danger" onclick={() => clearWithUndo(id)} disabled={!strokes.length}>Clear</button>
   </footer>
 </dialog>

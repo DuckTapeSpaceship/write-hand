@@ -22,7 +22,7 @@ export default defineConfig({
       // The app shows its own "update available" toast (src/lib/ui/pwa.ts).
       registerType: 'prompt',
       injectRegister: false,
-      includeAssets: ['theme.js', 'AshFont.ttf', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'],
+      includeAssets: ['theme.js', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'],
       manifest: {
         name: 'Write-Hand',
         short_name: 'Write-Hand',
@@ -32,8 +32,8 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         orientation: 'any',
-        theme_color: '#1e1f29',
-        background_color: '#1e1f29',
+        theme_color: '#c0caf5',
+        background_color: '#c0caf5',
         categories: ['design', 'productivity', 'utilities'],
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

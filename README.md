@@ -55,7 +55,7 @@ PW_BASE_URL=http://127.0.0.1:8340 npm run e2e   # same, against a built image (.
 src/
   App.svelte                    header, preview, tiers, grid, dialogs
   components/                   DrawCell, DrawSurface, CellMenu, WriteView, Preview,
-                                TierChips, TestStrip, ExportDialog, Onboarding, Landing, …
+                                TierChips, TestStrip, ExportDialog, Onboarding, …
   lib/model/                    metrics (font units, UPM 1000), charset tiers, project schema
   lib/input/                    pointer capture, long-press, the pen/finger input rule
   lib/engines/                  vector outline engine (B), pressure sources, perfect-freehand
@@ -79,4 +79,4 @@ The plan this was built from is in [docs/v2-plan.md](docs/v2-plan.md). Gate 1 co
 - **[fontify](https://github.com/alexkroeker177/fontify)** by Alexander Kroeker (MIT): the draw-in-every-box UI, the debounce → FontFace preview loop, pointer capture and point filtering, and the winding fix. Ported pieces carry a credit comment.
 - [perfect-freehand](https://github.com/steveruizok/perfect-freehand) (MIT), [Clipper2](https://github.com/AngusJohnson/Clipper2) via [clipper2-ts](https://github.com/countertype/clipper2-ts) (Boost), [opentype.js](https://github.com/opentypejs/opentype.js) (MIT), [HarfBuzz](https://github.com/harfbuzz/harfbuzzjs) (MIT), Google's [woff2](https://github.com/google/woff2) via [woff2-encoder](https://github.com/itskyedo/woff2-encoder) (MIT), [idb-keyval](https://github.com/jakearchibald/idb-keyval) (Apache-2.0), [Space Grotesk](https://fontsource.org/fonts/space-grotesk) (OFL).
 - Curve fitting follows Philip J. Schneider, "An Algorithm for Automatically Fitting Digitized Curves", *Graphics Gems* (1990).
-- `AshFont`, the landing headline font, was made with Write-Hand v1. Made for a friend.
+- `AshFont` (tests/fixtures), a font made with Write-Hand v1, is the sfnt test fixture. Made for a friend.

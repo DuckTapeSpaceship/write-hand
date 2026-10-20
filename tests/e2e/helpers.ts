@@ -96,6 +96,12 @@ export async function freshApp(page: Page, opts: { onboarded?: boolean } = {}) {
   await expect(cell(page, 'a')).toBeVisible()
 }
 
+export async function setTheme(page: Page, theme: 'light' | 'dark') {
+  await page.evaluate(t => localStorage.setItem('wh-theme', t), theme)
+  await page.reload()
+  await expect(cell(page, 'a')).toBeVisible()
+}
+
 export async function setSentence(page: Page, text: string) {
   const input = page.getByLabel('Preview sentence')
   if (!(await input.isVisible())) await page.getByRole('button', { name: 'Edit sentence' }).click() // phone

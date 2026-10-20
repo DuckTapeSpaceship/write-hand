@@ -2,8 +2,9 @@
   import { inputMode, type FingerPref } from '../lib/input/mode.svelte'
   import { PEN_PRESETS, type PenStyle } from '../lib/model/project'
   import { project } from '../lib/store/project.svelte'
-  import { prefs, type CellSize } from '../lib/ui/prefs.svelte'
+  import { prefs, type CellSize, type Theme } from '../lib/ui/prefs.svelte'
 
+  let { onhelp }: { onhelp: () => void } = $props()
   let open = $state(false)
   let root: HTMLDivElement
 
@@ -37,11 +38,11 @@
 </script>
 
 <div class="settings" bind:this={root}>
-  <button class="btn" aria-expanded={open} aria-haspopup="dialog" aria-label="Pen and layout settings" title="Pen & layout" onclick={() => (open = !open)}>
+  <button class="btn" aria-expanded={open} aria-haspopup="dialog" aria-label="Settings" title="Settings" onclick={() => (open = !open)}>
     <span aria-hidden="true">⚙</span>
   </button>
   {#if open}
-    <div class="panel pop" role="dialog" aria-label="Pen and layout">
+    <div class="panel pop" role="dialog" aria-label="Settings">
       <fieldset>
         <legend>Pen</legend>
         <div class="seg" role="radiogroup" aria-label="Pen style">
@@ -54,7 +55,6 @@
           <input type="range" min="60" max="160" step="5" value={weight} oninput={e => setWeight(+e.currentTarget.value)} />
           <span class="num">{weight}%</span>
         </label>
-        <p class="note">Changes every glyph: strokes are kept, outlines are rebuilt.</p>
       </fieldset>
       <fieldset>
         <legend>Cell size</legend>
@@ -65,13 +65,31 @@
         </div>
       </fieldset>
       <fieldset>
+        <legend>Theme</legend>
+        <div class="seg" role="radiogroup" aria-label="Theme">
+          {#each ['light', 'dark'] as const as t}
+            <button role="radio" aria-checked={prefs.theme === t} class:on={prefs.theme === t} onclick={() => prefs.setTheme(t as Theme)}>{t}</button>
+          {/each}
+        </div>
+      </fieldset>
+      <fieldset>
         <legend>Finger</legend>
         <select value={inputMode.finger} onchange={e => inputMode.setFinger(e.currentTarget.value as FingerPref)} aria-label="Finger behaviour">
-          <option value="auto">Auto ({inputMode.penSeen ? 'pen seen: tap to open' : inputMode.phone ? 'tap to open' : 'draw in grid'})</option>
-          <option value="draw">Draw in grid</option>
-          <option value="view">Open write view</option>
+          <option value="auto">Auto ({inputMode.penSeen ? 'scroll' : 'draw'})</option>
+          <option value="draw">Draw</option>
+          <option value="view">Scroll, tap to enlarge</option>
         </select>
       </fieldset>
+      <div class="foot">
+        <button
+          class="btn"
+          onclick={() => {
+            open = false
+            onhelp()
+          }}>How it works</button
+        >
+        <span class="num">{__APP_VERSION__}</span>
+      </div>
     </div>
   {/if}
 </div>
@@ -138,9 +156,14 @@
     width: 3.5em;
     text-align: right;
   }
-  .note {
-    margin: 0;
-    font-size: 0.75rem;
-    opacity: 0.75;
+  .foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .foot .num {
+    width: auto;
+    opacity: 0.7;
   }
 </style>

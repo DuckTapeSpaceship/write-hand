@@ -10,22 +10,21 @@
     return () => dialog.close()
   })
 
-  const steps = $derived([
+  const touch = matchMedia('(pointer: coarse)').matches && inputMode.touch === 'draw'
+  const steps = [
     {
       title: 'Draw each character in its box',
-      body: inputMode.phone
-        ? 'Tap a box to open a big canvas, write the letter, then use → to move on. Swipe the grid to scroll.'
-        : 'Write straight into each box with a mouse, pen or finger. Keep letters sitting on the solid baseline; the dashed lines are the x-height and capital height.',
+      body: touch ? 'Sit letters on the solid line. Scroll with two fingers.' : 'Sit letters on the solid line.',
     },
     {
-      title: 'Watch your sentence change',
-      body: 'The sentence at the top is set in your font as you draw. Highlighted letters are still missing: tap one to jump to it.',
+      title: 'Watch it become a font',
+      body: 'The text at the top uses your font. Tap a highlighted letter to draw it.',
     },
     {
-      title: 'Fix, then download',
-      body: 'Right-click or long-press a box to undo a stroke or clear it. Once the Required tier is done, Export gives you an .otf. Your drawing stays in this browser; Export can also save a backup file.',
+      title: 'Fix, then export',
+      body: `${touch ? 'Long-press' : 'Right-click'} a box to undo or clear. Finish Required to export.`,
     },
-  ])
+  ]
 
   function done() {
     try {

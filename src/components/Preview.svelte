@@ -1,6 +1,6 @@
 <script lang="ts">
-  // fontify's sticky sentence, extended: presets, auto mode, missing-glyph
-  // highlighting (tap to jump to the cell) and OpenType feature toggles.
+  // The sticky sentence: one line in your font; ✎ opens presets, auto mode and
+  // OpenType feature toggles. Missing letters are highlighted: tap to jump.
   import { DECOMPOSE } from '../lib/font/compose'
   import { SLOT_BY_ID } from '../lib/model/charset'
   import { live, PREVIEW_FAMILY } from '../lib/preview/live.svelte'
@@ -11,7 +11,6 @@
     auto = $bindable(),
     has,
     features = $bindable(),
-    compact = false,
     expanded = $bindable(false),
     onmissing,
   }: {
@@ -19,7 +18,6 @@
     auto: boolean
     has: (ch: string) => boolean
     features: { calt: boolean; liga: boolean; ss01: boolean }
-    compact?: boolean
     expanded?: boolean
     onmissing: (ch: string) => void
   } = $props()
@@ -40,8 +38,8 @@
   }
 </script>
 
-<div class="preview" class:compact class:expanded>
-  {#if !compact || expanded}
+<div class="preview" class:expanded>
+  {#if expanded}
   <div class="controls">
     <input
       class="sentence"
@@ -74,7 +72,7 @@
     <p
       class="render"
       onclick={e => {
-        if (compact && !(e.target as HTMLElement).closest('button')) expanded = !expanded
+        if (!(e.target as HTMLElement).closest('button')) expanded = !expanded
       }}
       data-testid="preview"
       style:font-family={live.ready ? `'${PREVIEW_FAMILY}', var(--font-ui)` : 'var(--font-ui)'}
@@ -87,23 +85,21 @@
           <button
             class="missing"
             disabled={!known}
-            title={known ? `Draw “${seg.text}”` : 'Not in the character set yet'}
+            title={known ? `Draw “${seg.text}”` : 'Not supported'}
             onclick={() => onmissing(seg.text)}>{seg.text}</button
           >
         {:else}{seg.text}{/if}
       {/each}
     </p>
   {/key}
-  {#if compact}
-    <button class="expand" aria-expanded={expanded} aria-label={expanded ? 'Close sentence settings' : 'Edit sentence'} onclick={() => (expanded = !expanded)}>
-      {expanded ? '▴' : '✎'}
-    </button>
+  <button class="expand" aria-expanded={expanded} aria-label={expanded ? 'Close sentence settings' : 'Edit sentence'} onclick={() => (expanded = !expanded)}>
+    {expanded ? '▴' : '✎'}
+  </button>
+  {#if missingCount && expanded}
+    <p class="status"><span><mark>{missingCount}</mark> missing</span></p>
   {/if}
-  {#if !compact || expanded}
-  <p class="status">
-    {#if missingCount}<span><mark>{missingCount}</mark> to draw · tap one to jump there</span>{:else if live.ready}<span>All drawn ✓</span>{/if}
-    {#if live.error}<span class="err">Build error: {live.error}</span>{/if}
-  </p>
+  {#if live.error}
+    <p class="status"><span class="err">Build error: {live.error}</span></p>
   {/if}
 </div>
 
@@ -113,7 +109,7 @@
     display: grid;
     gap: 6px;
   }
-  .compact .render {
+  .render {
     padding-right: 44px;
   }
   .expand {
@@ -121,13 +117,13 @@
     right: 0;
     bottom: 0;
     width: 38px;
-    height: 34px;
+    height: 32px;
     background: var(--bg);
     border: var(--border);
     border-radius: var(--radius);
     cursor: pointer;
   }
-  .compact.expanded .expand {
+  .expanded .expand {
     bottom: auto;
     top: 0;
   }
@@ -154,26 +150,20 @@
   }
   .render {
     margin: 0;
-    font-size: clamp(28px, 5vw, 48px);
+    font-size: 30px;
     line-height: 1.3;
     overflow-wrap: anywhere;
-    max-height: 2.7em;
-    overflow-y: auto;
-  }
-  @media (min-width: 600px) and (max-width: 1100px) {
-    .render {
-      font-size: 40px;
-      max-height: 2.6em;
-    }
-  }
-  .compact .render {
-    font-size: 26px;
     max-height: 1.35em;
     white-space: nowrap;
     overflow: hidden;
     cursor: pointer;
   }
-  .compact.expanded .render {
+  @media (max-width: 599px) {
+    .render {
+      font-size: 26px;
+    }
+  }
+  .expanded .render {
     white-space: normal;
     max-height: 20vh;
     overflow-y: auto;
@@ -201,9 +191,6 @@
   .status {
     margin: 0;
     font-size: 0.8rem;
-    display: flex;
-    gap: 12px;
-    min-height: 1.2em;
   }
   mark {
     background: var(--accent);

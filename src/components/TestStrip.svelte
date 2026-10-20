@@ -1,22 +1,21 @@
 <script lang="ts">
   // HarfBuzz-shaped test text from the live preview font, drawn from the
   // shaper's own glyph outlines and positions. Highlights show where calt
-  // picked an alternate (cyan) and where a ligature formed (pink). harfbuzzjs
-  // (~430 KB wasm) loads only when this panel opens.
+  // picked an alternate (cyan) and where a ligature formed (pink). Letters not
+  // drawn yet are set in the system font rather than as .notdef boxes.
   import { live } from '../lib/preview/live.svelte'
 
   let { features }: { features: { calt: boolean; liga: boolean; ss01: boolean } } = $props()
 
   type HB = typeof import('harfbuzzjs')
-  type Shaped = { name: string; path: string; x: number; adv: number; kind: 'alt' | 'liga' | 'missing' | 'plain' }
+  type Shaped = { name: string; path: string; ch: string; x: number; adv: number; kind: 'alt' | 'liga' | 'missing' | 'plain' }
 
-  let open = $state(false)
   let hb = $state.raw<HB | null>(null)
   let loadError = $state<string | null>(null)
   let text = $state('hello lilly, the office tattoo needs a little effort')
 
   $effect(() => {
-    if (!open || hb) return
+    if (hb) return
     import('harfbuzzjs')
       .then(m => (hb = m))
       .catch(err => (loadError = String(err)))
@@ -41,7 +40,8 @@
     const glyphs = infos.map((g, i) => {
       const name = font.font.glyphName(g.codepoint)
       const kind: Shaped['kind'] = g.codepoint === 0 ? 'missing' : /\.alt\d+$/.test(name) ? 'alt' : /^[^.]+_[^.]+$/.test(name) && !name.startsWith('uni') ? 'liga' : 'plain'
-      const out = { name, path: font.font.glyphToPath(g.codepoint), x: x + pos[i].xOffset, adv: pos[i].xAdvance, kind }
+      const ch = String.fromCodePoint(text.codePointAt(g.cluster) ?? 32)
+      const out = { name, path: font.font.glyphToPath(g.codepoint), ch, x: x + pos[i].xOffset, adv: pos[i].xAdvance, kind }
       x += pos[i].xAdvance
       return out
     })
@@ -54,71 +54,52 @@
   })
 </script>
 
-<section class="strip panel" class:open>
-  <button class="toggle" aria-expanded={open} onclick={() => (open = !open)}>
-    <span>Test strip</span>
-    <small>HarfBuzz shaping · alternates <i class="key alt"></i> ligatures <i class="key liga"></i></small>
-    <span aria-hidden="true">{open ? '▴' : '▾'}</span>
-  </button>
-  {#if open}
-    <div class="body">
-      <input bind:value={text} aria-label="Test strip text" maxlength="300" />
-      {#if loadError}
-        <p class="note">Could not load HarfBuzz: {loadError}</p>
-      {:else if !hb}
-        <p class="note">Loading HarfBuzz…</p>
-      {:else if !shaped}
-        <p class="note">Draw a few letters first.</p>
-      {:else}
-        {@const upem = font!.upem}
-        <div class="scroll">
-          <svg
-            data-testid="test-strip"
-            height="96"
-            width={(shaped.width / upem) * 72 + 16}
-            viewBox="-8 {-upem * 0.85} {shaped.width + 16} {upem * 1.15}"
-            role="img"
-            aria-label="Shaped test text"
-          >
-            {#each shaped.glyphs as g}
-              {#if g.kind !== 'plain'}
-                <rect class={g.kind} x={g.x} y={-upem * 0.8} width={g.adv} height={upem * 1.05} rx="12" data-glyph={g.name} />
-              {/if}
-              <path d={g.path} transform="translate({g.x} 0) scale(1 -1)" />
-            {/each}
-          </svg>
-        </div>
-        <p class="note" data-testid="test-strip-summary">
-          {counts.alt} alternate{counts.alt === 1 ? '' : 's'} · {counts.liga} ligature{counts.liga === 1 ? '' : 's'} ·
-          <span class="names">{shaped.glyphs.map(g => g.name).join(' ')}</span>
-        </p>
-      {/if}
+<section class="strip panel">
+  <input bind:value={text} aria-label="Test strip text" maxlength="300" />
+  {#if loadError}
+    <p class="note">Could not load HarfBuzz: {loadError}</p>
+  {:else if !hb}
+    <p class="note">Loading…</p>
+  {:else if !shaped}
+    <p class="note">Draw a letter to see it here.</p>
+  {:else}
+    {@const upem = font!.upem}
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (a scrollable region must be keyboard-reachable) -->
+    <div class="scroll" tabindex="0" role="region" aria-label="Test strip">
+      <svg
+        data-testid="test-strip"
+        height="96"
+        width={(shaped.width / upem) * 72 + 16}
+        viewBox="-8 {-upem * 0.85} {shaped.width + 16} {upem * 1.15}"
+        role="img"
+        aria-label="Shaped test text"
+      >
+        {#each shaped.glyphs as g}
+          {#if g.kind === 'missing'}
+            <text x={g.x + g.adv / 2} y="0" font-size={upem * 0.6} text-anchor="middle">{g.ch}</text>
+          {:else}
+            {#if g.kind !== 'plain'}
+              <rect class={g.kind} x={g.x} y={-upem * 0.8} width={g.adv} height={upem * 1.05} rx="12" data-glyph={g.name} />
+            {/if}
+            <path d={g.path} transform="translate({g.x} 0) scale(1 -1)" />
+          {/if}
+        {/each}
+      </svg>
     </div>
+    <p class="note" data-testid="test-strip-summary" data-glyphs={shaped.glyphs.map(g => g.name).join(' ')}>
+      <i class="key alt"></i>
+      {counts.alt} alternate{counts.alt === 1 ? '' : 's'} · <i class="key liga"></i>
+      {counts.liga} ligature{counts.liga === 1 ? '' : 's'}
+    </p>
   {/if}
 </section>
 
 <style>
   .strip {
     margin: 16px 0 4px;
-    padding: 0;
-    overflow: hidden;
-  }
-  .toggle {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    width: 100%;
-    padding: 10px 14px;
-    background: none;
-    border: 0;
-    text-align: left;
-    cursor: pointer;
-    font-weight: 600;
-  }
-  .toggle small {
-    flex: 1;
-    font-weight: 400;
-    opacity: 0.75;
+    padding: 12px 14px;
+    display: grid;
+    gap: 10px;
   }
   .key {
     display: inline-block;
@@ -138,14 +119,10 @@
     background: var(--pink);
     fill: var(--pink);
   }
-  rect.missing {
-    fill: var(--accent);
-  }
-  .body {
-    border-top: var(--border);
-    padding: 12px 14px;
-    display: grid;
-    gap: 10px;
+  svg text {
+    fill: var(--fg);
+    opacity: 0.45;
+    font-family: system-ui, sans-serif;
   }
   .scroll {
     overflow-x: auto;
@@ -159,11 +136,5 @@
   .note {
     margin: 0;
     font-size: 0.85rem;
-  }
-  .names {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    opacity: 0.75;
-    word-break: break-word;
   }
 </style>

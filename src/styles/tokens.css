@@ -1,9 +1,9 @@
 /* Write-Hand theme tokens: tactile / retro. One flat background, hard outlines
-   and shadows, 5px radius. Dark is the default; `data-theme` overrides. */
+   and shadows, 5px radius. Light is the default; data-theme='dark' switches. */
 :root {
-  color-scheme: dark;
-  --bg: #1e1f29;
-  --fg: #c0caf5;
+  color-scheme: light;
+  --bg: #c0caf5;
+  --fg: #1e1f29;
   --accent: #f1fa8c; /* Dracula yellow: highlighter */
   --on-accent: #1e1f29;
 
@@ -27,20 +27,6 @@
 
   --cell-min: 160px;
   --gutter: 16px;
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme='dark']) {
-    color-scheme: light;
-    --bg: #c0caf5;
-    --fg: #1e1f29;
-  }
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
-  --bg: #c0caf5;
-  --fg: #1e1f29;
 }
 
 :root[data-theme='dark'] {

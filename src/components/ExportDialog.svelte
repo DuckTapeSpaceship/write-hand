@@ -92,27 +92,26 @@
   </header>
 
   <section>
-    <h3>Your font</h3>
+    <h3>Font</h3>
     <label class="name">
       Font name
       <input bind:value={project.name} maxlength="64" />
     </label>
     {#if requiredLeft}
-      <p class="warn"><span class="pill">{requiredLeft} required left</span> Draw every Required character to download.</p>
+      <p class="warn"><span class="pill">{requiredLeft} required left</span></p>
     {/if}
     <div class="row">
       <button class="btn primary" data-testid="download" disabled={requiredLeft > 0 || !!busy} onclick={() => font('otf')}>
         {busy === 'otf' ? 'Building…' : 'Download .otf'}
       </button>
       <button class="btn" data-testid="download-woff2" disabled={requiredLeft > 0 || !!busy} onclick={() => font('woff2')}>
-        {busy === 'woff2' ? 'Compressing…' : '.woff2 for websites'}
+        {busy === 'woff2' ? 'Compressing…' : 'Download .woff2'}
       </button>
     </div>
-    <p class="note">OTF installs on your computer. WOFF2 is smaller, for use on a website with <code>@font-face</code>.</p>
   </section>
 
   <section>
-    <h3>Install the font</h3>
+    <h3>Install</h3>
     <div class="tabs" role="tablist" aria-label="Operating system">
       {#each OS as [id, label]}
         <button role="tab" aria-selected={os === id} class:on={os === id} onclick={() => (os = id)}>{label}</button>
@@ -121,46 +120,38 @@
     <div class="steps" role="tabpanel">
       {#if os === 'windows'}
         <ol>
-          <li>Open your Downloads folder and right-click <code>{slug}.otf</code>.</li>
-          <li>Choose <b>Install</b> (or <b>Install for all users</b>).</li>
-          <li>Restart apps that were open. The font is listed as “{project.name}”.</li>
+          <li>Right-click <code>{slug}.otf</code> in Downloads → <b>Install</b>.</li>
+          <li>Restart open apps.</li>
         </ol>
       {:else if os === 'mac'}
         <ol>
-          <li>Double-click <code>{slug}.otf</code> in Downloads. Font Book opens.</li>
-          <li>Click <b>Install</b>.</li>
-          <li>Choose “{project.name}” in the font menu of Pages, Keynote, Word and so on.</li>
+          <li>Double-click <code>{slug}.otf</code> in Downloads → <b>Install</b>.</li>
         </ol>
       {:else if os === 'linux'}
         <ol>
-          <li>Copy it into your fonts folder: <code>mkdir -p ~/.local/share/fonts && cp ~/Downloads/{slug}.otf ~/.local/share/fonts/</code></li>
-          <li>Refresh the cache: <code>fc-cache -f</code></li>
+          <li><code>mkdir -p ~/.local/share/fonts && cp ~/Downloads/{slug}.otf ~/.local/share/fonts/</code></li>
+          <li><code>fc-cache -f</code></li>
         </ol>
       {:else if os === 'ios'}
         <ol>
-          <li>iPadOS and iOS can't install a font file on their own: they need a font-installer app from the App Store, which installs it as a configuration profile.</li>
-          <li>Open <code>{slug}.otf</code> from Files in that app and follow its steps (Settings → General → VPN &amp; Device Management to finish).</li>
-          <li>Apps that import fonts directly (for example Procreate) can open the file themselves.</li>
+          <li>Use a font-installer app from the App Store, then finish in Settings → General → VPN &amp; Device Management.</li>
+          <li>Apps like Procreate can import <code>{slug}.otf</code> directly.</li>
         </ol>
       {:else}
         <ol>
-          <li>Most Android phones only install system fonts with root or a vendor font manager, so a downloaded OTF usually can't become the system font.</li>
-          <li>Many apps (note-taking, drawing, design) let you import a font file directly. Use <code>{slug}.otf</code> there.</li>
+          <li>Import <code>{slug}.otf</code> in apps that accept font files. System-wide fonts need root or a vendor font manager.</li>
         </ol>
       {/if}
     </div>
   </section>
 
   <section>
-    <h3>Back up your drawing</h3>
-    <p class="note">
-      Your strokes live only in this browser. Clearing site data, or (in Safari tabs) not visiting for a week, can erase them. A project file
-      keeps everything and can be opened here on any device.
-    </p>
+    <h3>Backup</h3>
+    <p class="note">Saved only in this browser. A project file opens on any device.</p>
     <div class="row">
-      <button class="btn" data-testid="export-project" onclick={exportProject}>Save project file</button>
+      <button class="btn" data-testid="export-project" onclick={exportProject}>Save project</button>
       <label class="btn">
-        Open project file…
+        Open project…
         <input type="file" accept=".json,application/json" data-testid="import-project" onchange={importProject} hidden />
       </label>
     </div>
@@ -168,11 +159,11 @@
 
   {#if install.deferred || install.iosHint}
     <section>
-      <h3>Install Write-Hand</h3>
+      <h3>App</h3>
       {#if install.deferred}
         <button class="btn" onclick={() => install.prompt()}>Install app</button>
       {:else}
-        <p class="note">In Safari, tap <b>Share</b> → <b>Add to Home Screen</b>. The Home Screen app keeps your drawing safe from Safari's 7-day cleanup.</p>
+        <p class="note">Safari: <b>Share</b> → <b>Add to Home Screen</b> keeps your drawing safe from Safari's 7-day cleanup.</p>
       {/if}
     </section>
   {/if}

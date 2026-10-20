@@ -60,7 +60,7 @@ export const TIERS: Tier[] = [
     label: 'Alternates',
     groups: [
       {
-        label: 'Second and third forms · repeated letters cycle through them (calt)',
+        label: 'Second and third forms',
         slots: ALT_LETTERS.flatMap(ch =>
           Array.from({ length: ALTS_PER_LETTER }, (_, i) => ({
             id: `${ch}.alt${i + 1}`,
@@ -78,8 +78,8 @@ export const TIERS: Tier[] = [
     label: 'Ligatures',
     groups: [
       {
-        label: 'Joined pairs · used wherever the pair appears (liga)',
-        slots: LIGATURES.map(id => ({ id, kind: 'liga' as const, label: id.replace(/_/g, ''), hint: 'joined', tier: 'ligatures' as const })),
+        label: 'Joined pairs',
+        slots: LIGATURES.map(id => ({ id, kind: 'liga' as const, label: id.replace(/_/g, ''), tier: 'ligatures' as const })),
       },
     ],
   },
@@ -88,7 +88,7 @@ export const TIERS: Tier[] = [
     label: 'Accents',
     groups: [
       {
-        label: 'Marks · composed onto your letters (é, ñ, ü, ç …)',
+        label: 'Marks',
         slots: MARKS.map(m => ({ id: `mark.${m.name}`, kind: 'mark' as const, unicode: m.unicode, label: m.label, hint: m.name, tier: 'accents' as const })),
       },
       { label: 'Letters & symbols', slots: [...'ßÆæØøŒœ¿¡«»€£'].map(base('accents')) },

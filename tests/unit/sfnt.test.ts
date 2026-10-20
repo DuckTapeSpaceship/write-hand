@@ -3,7 +3,7 @@ import { parse } from 'opentype.js'
 import { readFileSync } from 'node:fs'
 import { checksum, readSfnt, spliceTables, writeSfnt } from '../../src/lib/font/sfnt'
 
-const ash = readFileSync(new URL('../../public/AshFont.ttf', import.meta.url))
+const ash = readFileSync(new URL('../fixtures/AshFont.ttf', import.meta.url))
 const buf = ash.buffer.slice(ash.byteOffset, ash.byteOffset + ash.byteLength)
 
 describe('sfnt splicer', () => {

@@ -1,9 +1,8 @@
 // Input rule: which pointer draws in the grid, and what a finger does.
-//  - mouse / trackpad: draws directly in grid cells
-//  - pen: draws in grid cells; once one is seen, fingers scroll and tap to
-//    open the write view (palm rejection) unless finger drawing is turned on
-//  - finger only, phone: tap opens the write view, swipes scroll
-//  - finger only, tablet: draws in grid cells (setting can switch to write view)
+//  - mouse / trackpad / pen: draws directly in grid cells
+//  - finger: draws in grid cells too (two fingers scroll), until a pen is
+//    seen: then fingers scroll and tap to open the write view (palm rejection)
+//    unless finger drawing is turned on
 
 export type TouchPolicy = 'draw' | 'tap'
 export type FingerPref = 'auto' | 'draw' | 'view'
@@ -26,11 +25,10 @@ function write(key: string, v: string): void {
   }
 }
 
-export function touchPolicyFor(opts: { penSeen: boolean; phone: boolean; finger: FingerPref }): TouchPolicy {
+export function touchPolicyFor(opts: { penSeen: boolean; finger: FingerPref }): TouchPolicy {
   if (opts.finger === 'draw') return 'draw'
   if (opts.finger === 'view') return 'tap'
-  if (opts.penSeen) return 'tap'
-  return opts.phone ? 'tap' : 'draw'
+  return opts.penSeen ? 'tap' : 'draw'
 }
 
 class InputMode {
@@ -47,7 +45,7 @@ class InputMode {
   }
 
   get touch(): TouchPolicy {
-    return touchPolicyFor({ penSeen: this.penSeen, phone: this.phone, finger: this.finger })
+    return touchPolicyFor({ penSeen: this.penSeen, finger: this.finger })
   }
 
   markPen(): void {

@@ -24,7 +24,6 @@ test('accents tier: e + acute mark composes é in the preview', async ({ page })
 })
 
 test('a missing accented letter jumps to the part still to draw', async ({ page }) => {
-  test.skip(kind() === 'phone', 'phones open the write view instead')
   await stroke(cellCanvas(page, 'n'))
   await setSentence(page, 'ñ')
   await page.locator('[data-testid="preview"] .missing').click()
@@ -35,18 +34,18 @@ test('a missing accented letter jumps to the part still to draw', async ({ page 
 test('pen style and weight re-render the strokes', async ({ page }) => {
   await stroke(cellCanvas(page, 'a'))
   const before = await canvasData(cellCanvas(page, 'a'))
-  await page.getByRole('button', { name: 'Pen and layout settings' }).click()
+  await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('radio', { name: 'marker' }).click()
   await expect(page.getByRole('radio', { name: 'marker' })).toHaveAttribute('aria-checked', 'true')
   await expect.poll(() => canvasData(cellCanvas(page, 'a'))).not.toBe(before)
   await page.reload()
-  await page.getByRole('button', { name: 'Pen and layout settings' }).click()
+  await page.getByRole('button', { name: 'Settings' }).click()
   await expect(page.getByRole('radio', { name: 'marker' })).toHaveAttribute('aria-checked', 'true') // saved with the project
 })
 
 test('cell size L makes cells bigger', async ({ page }) => {
   const before = (await cellCanvas(page, 'a').boundingBox())!.width
-  await page.getByRole('button', { name: 'Pen and layout settings' }).click()
+  await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('radio', { name: 'L', exact: true }).click()
   await expect.poll(async () => (await cellCanvas(page, 'a').boundingBox())!.width).toBeGreaterThan(before + 10)
 })
@@ -56,7 +55,7 @@ test('write view: ghost neighbours, x-height handle, prev/next', async ({ page }
   await stroke(cellCanvas(page, 'c'))
   // Open b via its cell menu (works for every pointer type).
   await cell(page, 'b').locator('.head').dispatchEvent('pointerdown', { button: 0, clientX: 10, clientY: 10 })
-  await page.getByRole('menuitem', { name: 'Open large editor' }).click()
+  await page.getByRole('menuitem', { name: 'Enlarge' }).click()
   const dialog = page.getByRole('dialog', { name: 'Write b' })
   await expect(dialog).toBeVisible()
   // Ghosts: the empty b canvas still shows ink from a and c at its edges.
@@ -83,18 +82,16 @@ test('write view: ghost neighbours, x-height handle, prev/next', async ({ page }
   await expect(page.getByRole('dialog', { name: 'Write c' })).toBeVisible()
 })
 
-test('phone: compact bar, preview expands on tap and folds away on scroll', async ({ page }) => {
-  test.skip(kind() !== 'phone')
+test('thin header: one-line preview expands on tap and folds away on scroll', async ({ page }) => {
   const header = page.locator('header.top')
-  const vh = page.viewportSize()!.height
-  expect((await header.boundingBox())!.height).toBeLessThan(vh * 0.32)
+  expect((await header.boundingBox())!.height).toBeLessThan(110)
   await expect(page.getByLabel('Preview sentence')).toBeHidden()
   await page.getByTestId('preview').locator('.missing').first().click() // a letter tap still jumps
-  await expect(page.getByRole('dialog')).toBeVisible()
-  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('.cell:focus')).toHaveCount(1)
+  await page.waitForTimeout(800) // let the smooth scroll to the cell finish
   await page.getByRole('button', { name: 'Edit sentence' }).click()
   await expect(page.getByLabel('Preview sentence')).toBeVisible()
-  await expect(page.getByLabel('Font name')).toBeVisible()
   await page.evaluate(() => scrollBy(0, 400))
   await expect(page.getByLabel('Preview sentence')).toBeHidden()
 })
@@ -104,7 +101,7 @@ test('landscape phone: write view puts the canvas beside the controls', async ({
   const vp = page.viewportSize()!
   await page.setViewportSize({ width: vp.height, height: vp.width })
   await cell(page, 'a').locator('.head').dispatchEvent('pointerdown', { button: 0, clientX: 10, clientY: 10 })
-  await page.getByRole('menuitem', { name: 'Open large editor' }).click()
+  await page.getByRole('menuitem', { name: 'Enlarge' }).click()
   const dialog = page.getByRole('dialog', { name: 'Write a' })
   const canvas = (await dialog.locator('.canvas').boundingBox())!
   const done = (await dialog.getByRole('button', { name: 'Done' }).boundingBox())!

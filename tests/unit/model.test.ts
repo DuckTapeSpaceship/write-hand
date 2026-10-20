@@ -66,3 +66,17 @@ describe('project migration', () => {
     expect(() => migrate({ schema: 1 })).toThrow(/schema/)
   })
 })
+
+describe('slot revisions', () => {
+  it('never reuse a rev after a clear and redraw (the build cache keys on it)', async () => {
+    const { project } = await import('../../src/lib/store/project.svelte')
+    const s = { pts: [1, 2, 0.5, 0], pointer: 'pen' as const }
+    project.addStroke('q', s)
+    const first = project.slots.q.rev
+    project.clear('q')
+    project.addStroke('q', s)
+    expect(project.slots.q.rev).not.toBe(first)
+    project.apply({ ...project.snapshot() })
+    expect(project.slots.q.rev).toBeGreaterThan(first)
+  })
+})

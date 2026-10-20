@@ -70,9 +70,9 @@
   onkeydown={key}
 >
   <div class="title">“{label}”</div>
-  <button role="menuitem" onclick={() => act(onundo)} disabled={!canUndo}>Undo last stroke</button>
-  <button role="menuitem" class="danger" onclick={() => act(onclear)} disabled={!canClear}>Clear cell</button>
-  <button role="menuitem" onclick={() => act(onopen)}>Open large editor</button>
+  <button role="menuitem" onclick={() => act(onundo)} disabled={!canUndo}>Undo</button>
+  <button role="menuitem" class="danger" onclick={() => act(onclear)} disabled={!canClear}>Clear</button>
+  <button role="menuitem" onclick={() => act(onopen)}>Enlarge</button>
 </div>
 
 <style>

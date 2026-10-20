@@ -51,10 +51,9 @@ describe('long-press vs tap', () => {
 
 describe('input mode rule', () => {
   it('maps devices to finger behaviour', () => {
-    expect(touchPolicyFor({ penSeen: false, phone: true, finger: 'auto' })).toBe('tap')
-    expect(touchPolicyFor({ penSeen: false, phone: false, finger: 'auto' })).toBe('draw')
-    expect(touchPolicyFor({ penSeen: true, phone: false, finger: 'auto' })).toBe('tap')
-    expect(touchPolicyFor({ penSeen: true, phone: false, finger: 'draw' })).toBe('draw')
-    expect(touchPolicyFor({ penSeen: false, phone: false, finger: 'view' })).toBe('tap')
+    expect(touchPolicyFor({ penSeen: false, finger: 'auto' })).toBe('draw')
+    expect(touchPolicyFor({ penSeen: true, finger: 'auto' })).toBe('tap')
+    expect(touchPolicyFor({ penSeen: true, finger: 'draw' })).toBe('draw')
+    expect(touchPolicyFor({ penSeen: false, finger: 'view' })).toBe('tap')
   })
 })

@@ -2,11 +2,13 @@
   // A square drawing canvas in font units. Shared by grid cells and the write
   // view. Pointer handling follows the input rule (lib/input/mode): mouse and
   // pen draw; a finger draws or taps depending on `touch`. A long press (550 ms,
-  // < 6 px) discards the in-progress dot and opens the menu instead.
+  // < 6 px) discards the in-progress dot and opens the menu instead. In the
+  // grid, a second finger turns the gesture into a page scroll.
   import { freehandPolygon } from '../lib/engines/freehand'
   import { LongPressTracker } from '../lib/input/longpress'
   import type { TouchPolicy } from '../lib/input/mode.svelte'
   import { pointerKind, StrokeBuilder } from '../lib/input/pointer'
+  import { armTwoFingerScroll, onTwoFingerScroll, twoFingerScrolling } from '../lib/input/twofinger'
   import { cellBox, type Metrics } from '../lib/model/metrics'
   import type { Pen, Stroke } from '../lib/model/project'
 
@@ -17,6 +19,7 @@
     touch = 'draw',
     label = 'drawing area',
     ghosts = [],
+    twoFingerScroll = false,
     onstroke,
     onlongpress,
     ontap,
@@ -29,6 +32,7 @@
     label?: string
     /** Neighbouring glyphs drawn faintly at the edges, for consistent size and baseline. */
     ghosts?: { strokes: Stroke[]; side: 'left' | 'right' }[]
+    twoFingerScroll?: boolean
     onstroke: (s: Stroke) => void
     onlongpress?: (at: { x: number; y: number }) => void
     ontap?: () => void
@@ -152,7 +156,9 @@
       }
     }
     canvas.addEventListener('touchstart', blockStylus, { passive: false })
+    const unpan = twoFingerScroll ? onTwoFingerScroll(cancel) : null
     return () => {
+      unpan?.()
       ro.disconnect()
       theme.disconnect()
       mq.removeEventListener('change', redraw)
@@ -171,6 +177,10 @@
       // Let the browser scroll; a short, still press is a tap.
       tapping = true
       return
+    }
+    if (kind === 'touch' && twoFingerScroll) {
+      if (twoFingerScrolling()) return press.cancel()
+      armTwoFingerScroll()
     }
     e.preventDefault()
     try {

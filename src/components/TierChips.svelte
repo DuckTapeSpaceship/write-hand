@@ -34,22 +34,22 @@
 <style>
   .chips {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     overflow-x: auto;
-    padding: 4px 6px 8px 2px;
-    scrollbar-width: thin;
+    padding: 2px 4px 4px 2px;
+    scrollbar-width: none;
   }
   .chip {
     flex: none;
     display: inline-flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
-    min-height: 38px;
-    padding: 4px 12px;
+    min-height: 32px;
+    padding: 2px 10px;
     background: var(--bg);
     border: var(--border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: 2px 2px 0 0 var(--fg);
     cursor: pointer;
     transition:
       transform 60ms ease-out,
@@ -57,10 +57,10 @@
   }
   .chip:hover {
     transform: translate(-1px, -1px);
-    box-shadow: var(--shadow-hover);
+    box-shadow: 3px 3px 0 0 var(--fg);
   }
   .chip:active {
-    transform: translate(4px, 4px);
+    transform: translate(2px, 2px);
     box-shadow: none;
   }
   .chip.active {
@@ -69,8 +69,8 @@
   }
   .count {
     font-family: var(--font-mono);
-    font-size: 0.8rem;
-    padding: 1px 6px;
+    font-size: 0.75rem;
+    padding: 0 5px;
     border-radius: var(--radius);
     border: var(--border-w) solid currentColor;
   }

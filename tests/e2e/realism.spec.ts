@@ -16,11 +16,10 @@ test('alternates cycle and ligatures form, shown by the HarfBuzz test strip', as
   await page.getByRole('tab', { name: /Ligatures/ }).click()
   await stroke(cellCanvas(page, 'f_f'))
 
-  await page.getByRole('button', { name: /Test strip/ }).click()
   await page.getByLabel('Test strip text').fill('lll off')
   const summary = page.getByTestId('test-strip-summary')
   await expect(summary).toContainText('1 alternate · 1 ligature', { timeout: 20_000 })
-  await expect(summary).toContainText('l l.alt1 l space o f_f')
+  await expect(summary).toHaveAttribute('data-glyphs', 'l l.alt1 l space o f_f')
   await expect(page.locator('[data-testid="test-strip"] rect.alt')).toHaveCount(1)
   await expect(page.locator('[data-testid="test-strip"] rect.liga')).toHaveCount(1)
 
@@ -30,5 +29,5 @@ test('alternates cycle and ligatures form, shown by the HarfBuzz test strip', as
   await page.getByRole('checkbox', { name: 'ss01' }).check()
   await expect(summary).toContainText('0 alternates · 1 ligature')
   await page.getByRole('checkbox', { name: 'liga' }).uncheck()
-  await expect(summary).toContainText('l l l space o f f')
+  await expect(summary).toHaveAttribute('data-glyphs', 'l l l space o f f')
 })

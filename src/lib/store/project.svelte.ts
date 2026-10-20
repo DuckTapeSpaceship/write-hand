@@ -17,6 +17,14 @@ const PENDING = 'wh-pending-project'
 
 type Saved = Project & { savedAt?: number }
 
+// The build worker caches outlines by slot id + rev, so a rev must never come
+// back for the same id: not after a clear and redraw, nor from an imported file.
+let lastRev = 0
+function nextRev(): number {
+  lastRev = Math.max(lastRev + 1, Date.now())
+  return lastRev
+}
+
 function readPending(): Saved | null {
   try {
     const raw = localStorage.getItem(PENDING)
@@ -43,7 +51,7 @@ class ProjectStore {
     this.name = p.name
     this.metrics = p.metrics
     this.pen = p.pen
-    this.slots = p.slots
+    this.slots = Object.fromEntries(Object.entries(p.slots).map(([id, s]) => [id, { ...s, rev: nextRev() }]))
     this.sample = p.sample
   }
 
@@ -64,7 +72,7 @@ class ProjectStore {
     const def = SLOT_BY_ID.get(id)
     const next = { ...this.slots }
     if (strokes.length) {
-      next[id] = { id, kind: prev?.kind ?? def?.kind ?? 'base', unicode: prev?.unicode ?? def?.unicode, strokes, rev: (prev?.rev ?? 0) + 1 }
+      next[id] = { id, kind: prev?.kind ?? def?.kind ?? 'base', unicode: prev?.unicode ?? def?.unicode, strokes, rev: nextRev() }
     } else {
       delete next[id]
     }
