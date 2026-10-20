@@ -1,4 +1,7 @@
 <script lang="ts">
+  // Tier tabs with progress counts; a dropdown on phones, where five tabs
+  // would only fit as a sideways scroll.
+  import { inputMode } from '../lib/input/mode.svelte'
   import { TIERS, type TierId } from '../lib/model/charset'
   import { project } from '../lib/store/project.svelte'
 
@@ -14,6 +17,16 @@
   )
 </script>
 
+{#if inputMode.phone}
+  <div class="chips">
+    <select class="pick" bind:value={active} aria-label="Character tier">
+      {#each TIERS as t (t.id)}
+        {@const c = counts[t.id]}
+        <option value={t.id}>{t.label} {c.done}/{c.total}{c.done === c.total ? ' ✓' : ''}</option>
+      {/each}
+    </select>
+  </div>
+{:else}
 <div class="chips" role="tablist" aria-label="Character tiers">
   {#each TIERS as t (t.id)}
     {@const c = counts[t.id]}
@@ -30,6 +43,7 @@
     </button>
   {/each}
 </div>
+{/if}
 
 <style>
   .chips {
@@ -38,6 +52,16 @@
     overflow-x: auto;
     padding: 2px 4px 4px 2px;
     scrollbar-width: none;
+  }
+  .pick {
+    width: 100%;
+    min-height: 32px;
+    padding-block: 0;
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--on-accent);
+    box-shadow: 2px 2px 0 0 var(--fg);
+    font-variant-numeric: tabular-nums;
   }
   .chip {
     flex: none;

@@ -7,7 +7,6 @@
   import { downloadBlob, parseProjectFile, projectFileText, slugify } from '../lib/store/file'
   import { project } from '../lib/store/project.svelte'
   import { backup } from '../lib/ui/backup.svelte'
-  import { install } from '../lib/ui/pwa.svelte'
   import { toasts } from '../lib/ui/toast.svelte'
 
   let { onclose }: { onclose: () => void } = $props()
@@ -156,17 +155,6 @@
       </label>
     </div>
   </section>
-
-  {#if install.deferred || install.iosHint}
-    <section>
-      <h3>App</h3>
-      {#if install.deferred}
-        <button class="btn" onclick={() => install.prompt()}>Install app</button>
-      {:else}
-        <p class="note">Safari: <b>Share</b> → <b>Add to Home Screen</b> keeps your drawing safe from Safari's 7-day cleanup.</p>
-      {/if}
-    </section>
-  {/if}
 </dialog>
 
 <style>

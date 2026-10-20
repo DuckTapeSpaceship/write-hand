@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { canvasData, cell, cellCanvas, freshApp, setSentence, stroke } from './helpers'
+import { canvasData, cell, cellCanvas, expectTier, freshApp, pickTier, setSentence, stroke } from './helpers'
 
 const kind = () => {
   const n = test.info().project.name
@@ -12,22 +12,22 @@ test.beforeEach(async ({ page }) => {
 
 test('accents tier: e + acute mark composes é in the preview', async ({ page }) => {
   await setSentence(page, 'é')
-  await expect(page.locator('[data-testid="preview"] .missing')).toHaveCount(1)
+  await expect(page.locator('[data-testid="strip"] .missing')).toHaveCount(1)
   await stroke(cellCanvas(page, 'e'))
-  await page.getByRole('tab', { name: /Accents/ }).click()
+  await pickTier(page, 'accents', 'Accents')
   await stroke(cellCanvas(page, 'mark.acute'), [
     [0.45, 0.25],
     [0.6, 0.12],
   ])
-  await expect(page.locator('[data-testid="preview"] .missing')).toHaveCount(0)
+  await expect(page.locator('[data-testid="strip"] .missing')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => document.fonts.check("40px 'WH Preview'", 'é')), { timeout: 15_000 }).toBe(true)
 })
 
 test('a missing accented letter jumps to the part still to draw', async ({ page }) => {
   await stroke(cellCanvas(page, 'n'))
   await setSentence(page, 'ñ')
-  await page.locator('[data-testid="preview"] .missing').click()
-  await expect(page.getByRole('tab', { name: /Accents/ })).toHaveAttribute('aria-selected', 'true')
+  await page.locator('[data-testid="strip"] .missing').click()
+  await expectTier(page, 'accents', 'Accents')
   await expect(cell(page, 'mark.tilde')).toBeFocused()
 })
 
@@ -82,18 +82,18 @@ test('write view: ghost neighbours, x-height handle, prev/next', async ({ page }
   await expect(page.getByRole('dialog', { name: 'Write c' })).toBeVisible()
 })
 
-test('thin header: one-line preview expands on tap and folds away on scroll', async ({ page }) => {
-  const header = page.locator('header.top')
-  expect((await header.boundingBox())!.height).toBeLessThan(110)
-  await expect(page.getByLabel('Preview sentence')).toBeHidden()
-  await page.getByTestId('preview').locator('.missing').first().click() // a letter tap still jumps
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.locator('.cell:focus')).toHaveCount(1)
-  await page.waitForTimeout(800) // let the smooth scroll to the cell finish
-  await page.getByRole('button', { name: 'Edit sentence' }).click()
-  await expect(page.getByLabel('Preview sentence')).toBeVisible()
-  await page.evaluate(() => scrollBy(0, 400))
-  await expect(page.getByLabel('Preview sentence')).toBeHidden()
+test('the sentence box collapses into the header line on scroll, and back on tap', async ({ page }) => {
+  expect((await page.locator('header.top').boundingBox())!.height).toBeLessThan(60)
+  await setSentence(page, 'Zq')
+  await expect(page.getByTestId('preview-line')).toHaveCount(0)
+  await page.evaluate(() => scrollTo(0, 900))
+  const line = page.getByTestId('preview-line')
+  await expect(line).toBeVisible()
+  await expect(line.locator('.missing')).toHaveCount(2) // the same sentence
+  const box = (await line.boundingBox())!
+  await page.mouse.click(box.x + box.width - 20, box.y + box.height / 2) // no auto-scroll: that would un-collapse it
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0)
+  await expect(line).toHaveCount(0)
 })
 
 test('landscape phone: write view puts the canvas beside the controls', async ({ page }) => {

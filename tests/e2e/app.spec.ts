@@ -14,13 +14,11 @@ test.beforeEach(async ({ page }) => {
 
 test('pen stroke with changing pressure draws H and the preview stops marking it missing', async ({ page }) => {
   await setSentence(page, 'HH')
-  await expect(page.locator('[data-testid="preview"] .missing')).toHaveCount(2)
+  await expect(page.locator('[data-testid="strip"] .missing')).toHaveCount(2)
   await stroke(cellCanvas(page, 'H'))
   await expect(cell(page, 'H')).toHaveClass(/filled/)
-  await expect(page.locator('[data-testid="preview"] .missing')).toHaveCount(0, { timeout: 15_000 })
-  await expect
-    .poll(() => page.locator('[data-testid="preview"]').evaluate(el => getComputedStyle(el).fontFamily), { timeout: 15_000 })
-    .toContain('WH Preview')
+  await expect(page.locator('[data-testid="strip"] .missing')).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.getByTestId('test-strip')).toBeVisible() // shaped from the built font
   expect(await page.evaluate(() => document.fonts.check("48px 'WH Preview'", 'H'))).toBe(true)
 })
 
@@ -163,7 +161,7 @@ test('tablet: finger draws until a pen is seen, then fingers scroll and tap', as
 
 test('tapping a missing letter jumps to its cell', async ({ page }) => {
   await setSentence(page, 'Zq')
-  await page.locator('[data-testid="preview"] .missing', { hasText: 'Z' }).click()
+  await page.locator('[data-testid="strip"] .missing', { hasText: 'Z' }).click()
   await expect(cell(page, 'Z')).toBeFocused()
 })
 

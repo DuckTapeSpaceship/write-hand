@@ -102,10 +102,21 @@ export async function setTheme(page: Page, theme: 'light' | 'dark') {
   await expect(cell(page, 'a')).toBeVisible()
 }
 
+/** Switch tier: tabs on larger screens, a dropdown on phones. */
+export async function pickTier(page: Page, id: string, label: string) {
+  const select = page.getByLabel('Character tier', { exact: true })
+  if (await select.isVisible()) await select.selectOption(id)
+  else await page.getByRole('tab', { name: new RegExp(label) }).click()
+}
+
+export async function expectTier(page: Page, id: string, label: string) {
+  const select = page.getByLabel('Character tier', { exact: true })
+  if (await select.isVisible()) await expect(select).toHaveValue(id)
+  else await expect(page.getByRole('tab', { name: new RegExp(label) })).toHaveAttribute('aria-selected', 'true')
+}
+
 export async function setSentence(page: Page, text: string) {
-  const input = page.getByLabel('Preview sentence')
-  if (!(await input.isVisible())) await page.getByRole('button', { name: 'Edit sentence' }).click() // phone
-  await input.fill(text)
+  await page.getByLabel('Sentence', { exact: true }).fill(text)
 }
 
 /** Pixels of a canvas, for before/after comparisons. */

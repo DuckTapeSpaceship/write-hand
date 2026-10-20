@@ -1,5 +1,6 @@
 /* Write-Hand theme tokens: tactile / retro. One flat background, hard outlines
-   and shadows, 5px radius. Light is the default; data-theme='dark' switches. */
+   and shadows, 5px radius. Light is the default; data-theme='dark' switches,
+   data-theme='auto' follows the system. */
 :root {
   color-scheme: light;
   --bg: #c0caf5;
@@ -33,4 +34,12 @@
   color-scheme: dark;
   --bg: #1e1f29;
   --fg: #c0caf5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='auto'] {
+    color-scheme: dark;
+    --bg: #1e1f29;
+    --fg: #c0caf5;
+  }
 }

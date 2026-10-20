@@ -2,8 +2,9 @@
 // Content-Security-Policy can forbid inline scripts).
 try {
   var t = localStorage.getItem('wh-theme')
-  if (t === 'dark') {
+  if (t === 'dark' || t === 'auto') {
     document.documentElement.dataset.theme = t
-    document.querySelector('meta[name="theme-color"]').content = '#1e1f29'
+    if (t === 'dark' || matchMedia('(prefers-color-scheme: dark)').matches)
+      document.querySelector('meta[name="theme-color"]').content = '#1e1f29'
   }
 } catch (e) {}

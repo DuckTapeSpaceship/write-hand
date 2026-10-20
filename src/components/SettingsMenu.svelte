@@ -2,7 +2,10 @@
   import { inputMode, type FingerPref } from '../lib/input/mode.svelte'
   import { PEN_PRESETS, type PenStyle } from '../lib/model/project'
   import { project } from '../lib/store/project.svelte'
-  import { prefs, type CellSize, type Theme } from '../lib/ui/prefs.svelte'
+  import { prefs, type CellSize } from '../lib/ui/prefs.svelte'
+  import { install } from '../lib/ui/pwa.svelte'
+  import { toasts } from '../lib/ui/toast.svelte'
+  import Icon from './Icon.svelte'
 
   let { onhelp }: { onhelp: () => void } = $props()
   let open = $state(false)
@@ -22,6 +25,11 @@
     project.pen = { ...project.pen, size: Math.round((preset.size * pct) / 100) }
   }
 
+  function installApp() {
+    if (install.deferred) void install.prompt()
+    else toasts.show('In Safari: Share → Add to Home Screen')
+  }
+
   $effect(() => {
     if (!open) return
     const close = (e: PointerEvent) => {
@@ -39,7 +47,7 @@
 
 <div class="settings" bind:this={root}>
   <button class="btn" aria-expanded={open} aria-haspopup="dialog" aria-label="Settings" title="Settings" onclick={() => (open = !open)}>
-    <span aria-hidden="true">⚙</span>
+    <Icon name="settings" />
   </button>
   {#if open}
     <div class="panel pop" role="dialog" aria-label="Settings">
@@ -65,14 +73,6 @@
         </div>
       </fieldset>
       <fieldset>
-        <legend>Theme</legend>
-        <div class="seg" role="radiogroup" aria-label="Theme">
-          {#each ['light', 'dark'] as const as t}
-            <button role="radio" aria-checked={prefs.theme === t} class:on={prefs.theme === t} onclick={() => prefs.setTheme(t as Theme)}>{t}</button>
-          {/each}
-        </div>
-      </fieldset>
-      <fieldset>
         <legend>Finger</legend>
         <select value={inputMode.finger} onchange={e => inputMode.setFinger(e.currentTarget.value as FingerPref)} aria-label="Finger behaviour">
           <option value="auto">Auto ({inputMode.penSeen ? 'scroll' : 'draw'})</option>
@@ -82,13 +82,21 @@
       </fieldset>
       <div class="foot">
         <button
-          class="btn"
+          class="btn icon"
+          aria-label="How it works"
+          title="How it works"
           onclick={() => {
             open = false
             onhelp()
-          }}>How it works</button
+          }}><Icon name="help" /></button
         >
-        <span class="num">{__APP_VERSION__}</span>
+        {#if install.deferred || install.iosHint}
+          <button class="btn icon" aria-label="Install app" title="Install app" onclick={installApp}><Icon name="install" /></button>
+        {/if}
+        <button class="btn icon" aria-label="Theme: {prefs.theme}" title="Theme: {prefs.theme}" onclick={() => prefs.cycleTheme()}>
+          <Icon name={prefs.theme === 'light' ? 'sun' : prefs.theme === 'dark' ? 'moon' : 'auto'} />
+        </button>
+        <span class="num ver">{__APP_VERSION__}</span>
       </div>
     </div>
   {/if}
@@ -159,10 +167,15 @@
   .foot {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
+    margin-top: 4px;
   }
-  .foot .num {
+  .icon {
+    width: 40px;
+    padding: 0;
+  }
+  .ver {
+    margin-left: auto;
     width: auto;
     opacity: 0.7;
   }

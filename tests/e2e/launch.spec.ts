@@ -25,12 +25,13 @@ test('first visit: onboarding once, then from the settings menu', async ({ page 
 
 test('the page starts with the test strip, in the light theme', async ({ page }) => {
   await freshApp(page)
-  const strip = page.getByLabel('Test strip text')
+  const strip = page.getByTestId('strip')
   const grid = cellCanvas(page, 'a')
   expect((await strip.boundingBox())!.y).toBeLessThan((await grid.boundingBox())!.y)
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark')
   await page.getByRole('button', { name: 'Settings' }).click()
-  await page.getByRole('radio', { name: 'dark' }).click()
+  await page.getByRole('button', { name: 'Theme: light' }).click() // → dark
+  await expect(page.getByRole('button', { name: 'Theme: dark' })).toBeVisible()
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
 })
